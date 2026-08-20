@@ -1,0 +1,18 @@
+# Puntos de entrada de Frogger (Konami, RC-704). ROM de 8 KB en 0x4000.
+#
+# El unico punto de entrada que declara el cartucho: la BIOS lee la cabecera
+# "AB" y llama a INIT tras inicializar la maquina. Todo lo demas sale de seguir
+# el flujo desde aqui.
+0x41B4   # INIT, declarado en la cabecera del cartucho (bytes 2-3: b4 41)
+
+0x4012   # la rutina de interrupcion. INIT escribe `jp 0x4012` en el gancho
+         # H.KEYI (0xFD9A): `ld hl,0FD9Ah / ld (hl),0C3h / ld hl,4012h /
+         # ld (0FD9Bh),hl` en 0x41B5-0x41BF. La BIOS lo llama en cada interrupcion.
+
+# --- Detras de cada `call 0x57FF` hay una tabla de palabras cerrada por 0xFF, y
+#     la rutina hace `ret` al byte que va DESPUES de ese 0xFF. Esas cuatro
+#     continuaciones no las puede deducir el trazador.
+0x5203   # sigue tras la tabla de 0x51F8
+0x5218   # sigue tras la tabla de 0x520F
+0x5462   # sigue tras la tabla de 0x5457
+0x5765   # sigue tras la tabla de 0x5748

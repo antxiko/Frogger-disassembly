@@ -1,0 +1,107 @@
+<title>The game — Time Pilot</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Home</a><a href="GETTING-STARTED.html">Start</a><a href="THE-GAME.html" style=color:var(--tinta)>The game</a><a href="THE-CARTRIDGE.html">The cartridge</a><a href="THE-CODE.html">The code</a><a href="FINDINGS.html">Findings</a><a href="OPEN-QUESTIONS.html">Open questions</a><a href="es/EL-JUEGO.html" style="margin-left:auto;color:var(--oro)">Castellano</a></nav>
+<h1 id="the-game">The game</h1>
+<p>A frog crosses a road and a river to reach five homes at the top. It is the 1981 arcade game, cut down to eight kilobytes.</p>
+<h2 id="the-title-screen">The title screen</h2>
+<p>The screen is built from label lists (0x4A04 and four more), and it waits for one of four keys:</p>
+<table><tr><th>key</th><th>players</th><th>controls</th></tr><tr><td><b>1</b></td><td>one</td><td>joystick</td></tr><tr><td><b>2</b></td><td>two</td><td>joystick</td></tr><tr><td><b>3</b></td><td>one</td><td>keyboard</td></tr><tr><td><b>4</b></td><td>two</td><td>keyboard</td></tr></table>
+<p><code>0xE007</code> holds which one: 1 reads PSG register 14 (the joystick), 0 reads row 8 of the keyboard (the cursor keys, translated through the table at 0x49B7).</p>
+<p>Before the title, and only the first time, there is a short presentation: a frog climbing the screen a row at a time from row 20 up to row 3 (0x427F). Pressing any of the four keys cuts it short.</p>
+<h2 id="the-screen">The screen</h2>
+<p>The playfield is <b>22 columns wide</b>, from column 2 to column 23; the rest of the screen is the scoreboard down the right-hand side, from column 25.</p>
+<table><tr><th>rows</th><th></th></tr><tr><td>0</td><td>the five homes, four characters each, at columns 4, 8, 12, 16 and 20</td></tr><tr><td>1–2</td><td>the border below them</td></tr><tr><td>3, 5, 7, 9</td><td>the river: logs, turtles and the crocodile</td></tr><tr><td>11–12</td><td>the median, one character repeated 22 times</td></tr><tr><td>13, 15, 17, 19</td><td>the road: four kinds of vehicle</td></tr><tr><td>21–23</td><td>the bank the frog starts from</td></tr></table>
+<h2 id="the-frog">The frog</h2>
+<p>Up and down move <b>16 pixels</b> — a whole row. Left and right move only <b>8</b>, half a cell. Each jump changes the drawing: 0x04 facing up, 0x10 down, 0x1C left and 0x24 right.</p>
+<p>The frog is <b>two sprites</b>. While a jump lasts, the second one stays behind in the cell it left.</p>
+<p><b>Ten points</b> for every jump forward (<code>ld bc,0x0010</code>, in BCD). Jumping backwards gives nothing.</p>
+<h2 id="the-homes">The homes</h2>
+<p>Each of the five has its own bit in 0xE080. Landing on one that is <b>already taken</b> is not a bounce and not a warning: 0x528F reads the bit and, if it was set, jumps straight to the death routine.</p>
+<p>Filling all five ends the stage. Whatever is left on the clock is cashed in at <b>ten points a unit</b>, one every two frames.</p>
+<h2 id="the-clock">The clock</h2>
+<p>The time starts at 150 (0x96 in BCD) and drops by one every 20 frames. Running out kills the frog.</p>
+<p>Two things happen along the way that are easy to miss: at <b>0x60</b> four objects in row 15 speed up, once per stage; and at <b>0x32</b> the character the time bar is drawn with changes colour.</p>
+<h2 id="lives-and-extra-lives">Lives and extra lives</h2>
+<p>Three lives. The extra life threshold lives in 0xE005 and is compared against the <b>high byte</b> of the score, which counts tens of thousands: it starts at 1 and goes up by 5, so the first extra life comes at <b>10,000</b> and the rest every <b>50,000</b>.</p>
+<p>Only seven lives are ever drawn, however many there are.</p>
+<footer><p><em>Time Pilot</em> was published by Konami for the MSX; its catalogue number is RC-703 and the cartridge itself signs <b>&copy;KONAMI 1983</b> twice, in its own font: under the title and at the foot of the scoreboard. There are no credits and no initials anywhere in the binary. All rights in the game remain with their holders. This is preservation, study and documentation work.</p></footer></div>

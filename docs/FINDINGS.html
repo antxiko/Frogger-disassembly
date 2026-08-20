@@ -1,0 +1,116 @@
+<title>Findings — Time Pilot</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Home</a><a href="GETTING-STARTED.html">Start</a><a href="THE-GAME.html">The game</a><a href="THE-CARTRIDGE.html">The cartridge</a><a href="THE-CODE.html">The code</a><a href="FINDINGS.html" style=color:var(--tinta)>Findings</a><a href="OPEN-QUESTIONS.html">Open questions</a><a href="es/HALLAZGOS.html" style="margin-left:auto;color:var(--oro)">Castellano</a></nav>
+<h1 id="findings">Findings</h1>
+<p>Everything here is anchored to an address and to a figure that can be checked against the binary. Where something is a guess, it is in <a href="OPEN-QUESTIONS.html">Open questions</a> instead.</p>
+<h2 id="frogger-and-time-pilot-carry-the-same-sound-player">Frogger and Time Pilot carry the same sound player</h2>
+<p>Not similar — <b>the same code</b>. The 163 bytes at 0x4111–0x41B3 here and those at 0x4160–0x4202 in Time Pilot (RC-703) match byte for byte except for <b>three</b>:</p>
+<table><tr><th>Frogger</th><th>Time Pilot</th><th></th></tr><tr><td>0x4137: <code>A1</code></td><td>0x4186: <code>F0</code></td><td>the low byte of a pointer, 0x41A1 against 0x41F0</td></tr><tr><td>0x4171: <code>A1</code></td><td>0x41C0: <code>F0</code></td><td>the same pointer again</td></tr><tr><td>0x415D: <code>A8</code></td><td>0x41AC: <code>98</code></td><td><b>PSG register 7, the mixer</b></td></tr></table>
+<p>The first two are the same routine relocated: 0x41A1 + 0x4F = 0x41F0, exactly the offset between the two copies. The third is the only one that says something different — <b>the noise is on channel B in Frogger and on channel C in Time Pilot</b>.</p>
+<p>The cross-check: the ten labels the tracer found here on its own (L_4111, L_412F, L_413E, L_4167, L_4189, L_4190, L_4192, L_41A1, L_41AA, L_41B4) land one by one on the ten already named in Time Pilot once you subtract 0x4F. None left over on either side. In both cartridges the player sits immediately before INIT.</p>
+<h2 id="the-whole-demo-is-fifteen-bytes">The whole demo is fifteen bytes</h2>
+<pre><code>584F  00 08 01 01 01 01 01 08 01 01 01 01 08 00 01</code></pre>
+<p>One byte per move, in the same format as the controls: 0x01 up, 0x08 right, 0x00 nothing. Wait, right, five times up, right, four up, right, wait, one more up.</p>
+<h2 id="there-are-four-layouts-not-five">There are four layouts, not five</h2>
+<p>The stage is picked with <code>(stage-1) mod 5</code> over the five-word table at 0x5457 — but the second and third entries <b>both point to 0x5CCD</b>. Stages 2 and 3 use exactly the same layout.</p>
+<p>What separates them are two touch-ups 0x5493 makes on the third slot only: the first object of the top row becomes a <b>crocodile</b>, and the second object of row 15 gets the &quot;last&quot; bit, leaving that row with two objects instead of three.</p>
+<h2 id="from-stage-11-on-the-game-stops-getting-harder">From stage 11 on, the game stops getting harder</h2>
+<p>There are <b>four</b> comparisons against the stage number in the whole cartridge:</p>
+<table><tr><th>stage</th><th></th><th>where</th></tr><tr><td>2</td><td>eight river objects go up two types</td><td>0x54A8</td></tr><tr><td>3</td><td>the frog you have to rescue appears</td><td>0x506A</td></tr><tr><td>6</td><td>two lanes move one step per turn, and a third diving turtle is added</td><td>0x54C9</td></tr><tr><td>11</td><td>row 7 is left with a single object</td><td>0x54DB</td></tr></table>
+<p>After that the only thing that changes is which of the four layouts comes up, and that cycles every five. Stage 11, stage 47 and stage 99 play the same.</p>
+<p>And there is no ending. On stage <b>100</b> the counter goes back to 1 (0x53F5) and the BCD number on the scoreboard goes back to 01. No banner, no music, no screen.</p>
+<h2 id="the-diving-turtles-are-hand-picked-one-by-one">The diving turtles are hand-picked, one by one</h2>
+<p>Diving is a bit, not a property. When the stage is built, 0x5489 sets it at <b>exactly two addresses</b> — 0xE0C3 and 0xE0EB — with the counters at 0x80 and 0x8A so that the two groups never dive together. From stage 6 on, 0x54D6 adds a third (0xE0E7, counter 0x8F).</p>
+<h2 id="logs-and-cars-do-not-spend-a-single-sprite">Logs and cars do not spend a single sprite</h2>
+<p>Four versions of every drawing, shifted 0, 2, 4 and 6 pixels, generated at start-up by rolling the whole pattern set two bits at a time and letting the bits that fall off enter the character next door (0x473C). Positions are kept in quarters of a character, and their low two bits pick the version.</p>
+<h2 id="three-screen-thirds-matched-with-a-single-copy">Three screen thirds matched with a single copy</h2>
+<p>One copy of 4095 bytes with the destination 2 KB ahead of the source (0x471A). Past the first third it is reading what it just wrote, so the second propagates into the third on its own.</p>
+<h2 id="the-same-letters-uploaded-twice-just-for-the-colour">The same letters uploaded twice, just for the colour</h2>
+<p>INIT sends the letter set to characters 0xD8 and then <b>again</b> to 0x98 (0x4235 and 0x4240 repeat bytes the previous block had already sent). The colour table loaded right after gives cyan to one range and white to the other. In SCREEN 2 colour goes per pattern line, so that is the only way to have the same letters in two colours.</p>
+<h2 id="jumping-into-a-home-that-is-already-taken-kills-you">Jumping into a home that is already taken kills you</h2>
+<p>0x528F reads the bit for that home in 0xE080 and, if it was already set, <code>jp 0x5305</code> — the death routine. No bounce, no warning.</p>
+<h2 id="two-things-the-clock-does-that-you-cannot-see">Two things the clock does that you cannot see</h2>
+<p>At <b>0x60</b>, once per stage, four objects in row 15 get their speed decremented (0x511A) — they run faster. At <b>0x32</b>, the character the time bar is drawn with is repainted in another colour (0x514B).</p>
+<h2 id="a-routine-nobody-calls">A routine nobody calls</h2>
+<p>At 0x57F7 there are six bytes of working code: the one-byte-index version of the table lookup at 0x57FF. <code>ex (sp),hl / ld c,a / ld b,0 / add hl,bc / ld b,(hl) / jr 0x5809</code>. <b>No instruction in the cartridge calls it</b> — all four call sites go to the two-byte version.</p>
+<footer><p><em>Time Pilot</em> was published by Konami for the MSX; its catalogue number is RC-703 and the cartridge itself signs <b>&copy;KONAMI 1983</b> twice, in its own font: under the title and at the foot of the scoreboard. There are no credits and no initials anywhere in the binary. All rights in the game remain with their holders. This is preservation, study and documentation work.</p></footer></div>

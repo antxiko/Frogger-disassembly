@@ -1,0 +1,1086 @@
+# Anotaciones de Frogger (Konami, MSX1, cartucho RC-704).
+#
+# Cada linea va anclada a una direccion, asi que los comentarios sobreviven a
+# un retrazado. Directivas: L=etiqueta, C=comentario de linea, B=cabecera de
+# bloque, D=rango de datos, F=anchura de las filas de un bloque de datos. Todo
+# sale de leer el codigo que lo usa. Sin acentos a proposito.
+#
+# EL MAPA DE MEMORIA. Cartucho de 8 KB en la pagina 1 (0x4000-0x5FFF) -es el
+# mas pequeno de la serie, la mitad que Time Pilot-; la RAM del juego de 0xE000
+# a 0xE7FF y la pila en 0xE7FF. INIT (0x41B4) instala la interrupcion en el
+# gancho H.KEYI y a partir de ahi el programa principal y la interrupcion se
+# reparten el trabajo.
+#
+# LA VRAM. SCREEN 2 con los tres tercios cargados iguales: nombres en 0x3800,
+# patrones en 0x2000, color en 0x0000, atributos de sprite en 0x3B00 y patrones
+# de sprite en 0x1800 (16x16). Los ocho registros salen de 0x49A3.
+# En el listado las direcciones de VRAM aparecen con el bit 14 puesto (0x4000)
+# cuando se va a escribir: 0x7800 es la tabla de nombres, 0x7B00 los atributos
+# de sprite, 0x4000 el color.
+#
+# COMO ESTA REPARTIDA LA PANTALLA. El juego ocupa 22 columnas (de la 2 a la 23)
+# y el marcador el lateral derecho, desde la columna 25. Por filas:
+#   0        las cinco casas vacias (cuatro caracteres cada una, en las
+#            columnas 4, 8, 12, 16 y 20)
+#   1-2      el borde de las casas
+#   3,5,7,9  el rio: troncos, tortugas y el cocodrilo
+#   11-12    la mediana, un solo caracter repetido 22 veces
+#   13,15,17,19  la carretera: cuatro tipos de vehiculo
+#   21-23    la orilla de abajo, de donde sale la rana
+#
+# EL MAPA DE LA RAM
+#   E000 modo de juego (0 = un jugador, 1 = dos)   E001 jugador que juega (0/1)
+#   E002/E003 vidas de cada jugador                E004 se acabo la vida
+#   E005/E006 proximo escalon de vida extra, por jugador (BCD, en el byte alto
+#        de los puntos: arranca en 1 -10000- y sube de 5 en 5, o sea 50000 mas)
+#   E007 con que se juega: 1 = joystick, 0 = teclado
+#   E008/E009 mandos: los de antes y los de ahora
+#   E00B-E00D puntos del jugador 1 (3 bytes BCD, el mas alto primero)
+#   E00E-E010 puntos del jugador 2      E011-E013 el record
+#   E014 esta corriendo la demo         E015 hay partida en marcha
+#   E016 cuenta atras del parpadeo del 1UP/2UP
+#   E018 espera en fotogramas; la interrupcion la baja una vez cada 32
+#   E019 contador de fotogramas (la interrupcion lo sube)
+#   E020-E027 canal 1 de sonido        E028-E02F canal 2
+#   E030-E037 canal 3                  (ver el bloque de 0x4111)
+#   E040 que escena toca; cinco bits, cinco rutinas (ver 0x4087)
+#   E042 bit 0: el rotador de patrones tiene que mezclar dos capas
+#   E043 la palabra que decide de que se ocupa la interrupcion (ver 0x4018)
+#   E048 ya se ha visto la presentacion de la rana subiendo
+#   E049/E04A puntero a la lista de la demo, con el byte ALTO delante; solo se
+#        incrementa el bajo, asi que la lista no puede cruzar de pagina
+#   E052 el tiempo que queda, en BCD; arranca en 0x96 = 150
+#   E053 cuenta 20 fotogramas por cada unidad de tiempo
+#   E054 cuenta 4 unidades de tiempo por cada paso de la barra
+#   E055-E05C la barra de tiempo, un caracter por tramo (solo se dibujan 6)
+#   E080-E087 el jugador 1, y E088-E08F el jugador 2, con la misma plantilla:
+#        +0 los bits de las cinco casas ya ocupadas   +1 cuantas lleva
+#        +2 la fase (1..99)    +3 banderas de la fase    +4 la fase en BCD
+#   E0A0 en cual de los tres fotogramas del reparto estamos (0,1,2)
+#   E0A1-E0A8 el reloj de cada uno de los ocho carriles: nibble alto el
+#        periodo, nibble bajo la cuenta (ver 0x5682)
+#   E0B0-E14F las fichas de los objetos de los carriles, de cuatro bytes:
+#        +0 tipo (nibble bajo) y banderas   +1 posicion en cuartos de caracter
+#        +2 velocidad con signo             +3 el contador de hundirse
+#   E280 banderas de la rana   E281 cuenta del salto
+#   E282-E285 el sprite de la rana; E286-E289 el segundo, que se queda en la
+#        casilla de la que salio mientras dura el salto
+#   E28A a que fila ha llegado (la usa 0x5185 para saber si esta en el rio)
+#   E290-E296 el bicho que cruza el rio     E2A0-E2A6 la rana que se rescata
+#   E2B0-E2C0 el cocodrilo (cuatro sprites) E2E8-E2EB la rana ya rescatada
+#   E300-E5AD las listas de patrones de los catorce tipos, generadas al
+#        arrancar por 0x480E y 0x486D
+#   E600-E64F el bufer donde se monta cada carril: dos filas de 40 columnas
+#
+
+# ---------------------------------------------------------------------------
+# LA INTERRUPCION
+# ---------------------------------------------------------------------------
+B 0x4012 LA INTERRUPCION. La BIOS entra aqui en cada retrazo por el gancho H.KEYI. Lo primero que decide es de que se ocupa este fotograma, mirando 0xE043; despues, si hay partida, que escena toca, mirando 0xE040.
+L 0x4012 INTERRUPCION
+C 0x4016 leer el estado del VDP es lo que reconoce la interrupcion
+C 0x4018 0xE043 reparte el fotograma: bit 0, solo la demo y el sonido; bit 6, solo el sonido
+C 0x4025 sin partida en marcha no hay nada que mover, solo la cuenta de fotogramas
+C 0x402E con la demo en marcha los mandos no se leen: salen de una lista
+C 0x4031 1 = joystick (registro 14 del PSG), 0 = teclado (los cursores)
+L 0x403F LEE_EL_TECLADO Los cursores, y ademas quita el bit del disparo si hay tecla de por medio
+C 0x404B fila 7 del teclado, para el bit 6
+L 0x404B MIRA_FILA_7
+L 0x4058 MANDOS_LISTOS
+L 0x405B PILOTA_LA_DEMO Un byte de la lista de 0x584F por cada espera agotada
+C 0x4066 el puntero de la demo tiene el byte ALTO delante, y solo sube el bajo
+C 0x406C se avanza al leerlo, asi que la lista se consume de una vez
+L 0x4071 INVIERTE
+L 0x4072 GUARDA_MANDOS
+C 0x4072 0xE008 son los mandos de antes; solo se apunta el cambio
+L 0x407B MANDOS_A_E009
+C 0x407F sin nada pulsado, la rana deja de estar a mitad de un salto
+L 0x4087 QUE_ESCENA_TOCA
+B 0x4087 QUE ESCENA TOCA. 0xE040 se lee bit a bit con rrca: cada bit es una escena, y si no hay ninguno corre el juego normal. Bit 0 la muerte, bit 1 el bonus del tiempo (dentro del juego), bit 2 la fase superada, bit 3 el fin de la partida, bit 4 montar la fase.
+C 0x408B bit 0: la rana ha muerto
+C 0x408F bit 2: fase superada
+C 0x4092 bit 3: se acabo la partida
+C 0x4095 bit 4: hay que montar la fase
+C 0x4098 el juego normal, en este orden: los carriles, la rana, el bicho del rio, la rana que se rescata y los choques
+C 0x40A7 si 0x5185 devuelve acarreo la rana ha muerto, y se pasa a la escena de la muerte
+C 0x40AF el reloj de la partida
+C 0x40B5 bit 1: la rana ya esta en casa y corre el bonus del tiempo
+L 0x40AF SIGUE_EL_JUEGO
+L 0x40BC ESCENA_MUERTE
+L 0x40C1 ESCENA_FASE_SUPERADA
+L 0x40C6 ESCENA_MONTA_FASE
+L 0x40CB ESCENA_FIN_DE_PARTIDA
+L 0x40D0 SOLO_DEMO_Y_SONIDO
+C 0x40D9 con el canal 3 callado se sale del reparto reducido
+L 0x40E1 MIRA_EL_BIT_7
+L 0x40E7 PARPADEA_EL_1UP
+L 0x40EA SUENAN_LOS_TRES_CANALES
+L 0x40FC CUENTA_DE_FOTOGRAMAS
+C 0x40FF 0xE019 sube en todos los fotogramas, pase lo que pase
+C 0x4101 una vez cada 32 se descuenta la espera de 0xE018
+L 0x410A INTERRUPCION_SALIDA
+
+# ---------------------------------------------------------------------------
+# EL REPRODUCTOR DE SONIDO
+# ---------------------------------------------------------------------------
+B 0x4111 EL REPRODUCTOR DE SONIDO. Un canal por llamada, con la ficha de 8 bytes en HL-1. El programa se guarda en el propio cartucho como una tira de notas de tres bytes: periodo bajo, periodo alto con el volumen en el nibble de arriba y el bit 3 para el ruido, y duracion. Con la duracion negativa la nota se va apagando sola. Estos 163 bytes son EL MISMO CODIGO que 0x4160-0x4202 de Time Pilot: de los 163 solo tres bytes cambian, y dos de ellos son el byte bajo de un puntero reubicado (0x41A1 aqui, 0x41F0 alli, el desfase 0x4F exacto).
+L 0x4111 PASO_DE_CANAL Un paso del canal cuya ficha empieza en HL-1
+C 0x4111 con el byte de arriba del puntero a cero, el canal esta callado
+C 0x4115 los dos primeros bytes de la ficha son el puntero al programa
+C 0x411B el tercero es lo que le queda a la nota; con el bit 7, ademas, se apaga sola
+L 0x412F CANAL_BAJA_VOLUMEN Un escalon menos de volumen, y a esperar
+L 0x413E CANAL_NOTA_NUEVA Lee del programa la nota que toca
+C 0x413E 0xFF termina el programa
+C 0x4148 registro 2n del PSG: el periodo fino del canal n
+C 0x414D y el 2n+1: los cuatro bits altos del periodo
+C 0x4154 el bit 3 del segundo byte enciende el ruido
+C 0x415A registro 7: la mezcla. Es EL UNICO byte de estos 163 que dice algo distinto en Time Pilot: alli vale 0x98 y el ruido va al canal C; aqui vale 0xA8 y va al canal B
+L 0x4167 CANAL_PON_VOLUMEN
+C 0x4169 el nibble alto del segundo byte es el volumen de arranque
+C 0x4178 el tercer byte es la duracion de la nota
+L 0x4189 CANAL_GUARDA_PUNTERO
+L 0x4190 CANAL_SIGUE
+L 0x4192 CANAL_FIN Se acabo el programa: se calla el canal y se enciende el ruido
+C 0x4197 al acabar el programa, la mezcla vuelve a dejar el ruido suelto
+L 0x41A1 ESCRIBE_VOLUMEN Registro 8+canal del PSG = B
+C 0x41A3 registro 8+n del PSG: el volumen del canal n
+L 0x41AA CANAL_MIRA_ESCALON
+
+# ---------------------------------------------------------------------------
+# EL ARRANQUE Y LA PANTALLA DE TITULO
+# ---------------------------------------------------------------------------
+B 0x41B4 INIT. Lo llama la BIOS al arrancar, con el cartucho ya mapeado en la pagina 1. Engancha la interrupcion, borra la RAM, pone la pila, apaga el PSG y carga la pantalla de titulo.
+L 0x41B4 INIT
+C 0x41B5 el gancho H.KEYI: `jp 0x4012` escrito a mano, byte a byte
+C 0x41C0 borra los 2 KB de RAM del juego de un solo LDIR, y deja la pila en 0xE7FF
+C 0x41CD registro 1 del VDP = 0xA2 antes de nada, para apagar la pantalla
+C 0x41D7 registro 15 del PSG: la seleccion del puerto de mando
+C 0x41F2 los tres volumenes del PSG a cero
+L 0x41F6 CALLA_EL_PSG
+L 0x41FF ARRANQUE El punto al que se vuelve al acabar una partida
+C 0x4209 borra los 16 KB de VRAM: 64 vueltas de 256 bytes
+L 0x420F BORRA_LA_VRAM
+C 0x4217 los ocho registros del VDP, de 0x49A3
+L 0x421E CARGA_LOS_REGISTROS
+C 0x4227 espera una unidad de 0xE018
+C 0x426A los tres tercios de SCREEN 2 quedan iguales con UNA sola copia
+C 0x427C VRAM 0x3A8B: fila 20, columna 11. De ahi arranca la rana de la presentacion
+L 0x427F LA_RANA_SUBE La presentacion: una rana que sube la pantalla de 32 en 32
+C 0x4284 solo se mueve en los fotogramas impares
+C 0x4286 al llegar a VRAM 0x386B -fila 3- se para
+C 0x42AF una fila menos: 32 caracteres hacia arriba
+L 0x4290 BORRA_Y_SUBE
+L 0x42B5 MIRA_SI_ACABO
+L 0x42BD MIRA_SI_HAY_TECLA
+C 0x42BF fila 0 del teclado: cualquiera de las teclas 1 a 4 corta la presentacion
+L 0x42C9 A_LA_PANTALLA_DE_TITULO
+B 0x42D3 LA PANTALLA DE TITULO. Deja correr la demo y espera a que se pulse una de las cuatro teclas. La 1 y la 2 juegan con joystick, la 3 y la 4 con el teclado; la 1 y la 3 son un jugador y la 2 y la 4 son dos. Cada una tiene su propia lista de rotulos, que es lo que se ve resaltado en la pantalla.
+L 0x42D3 PANTALLA_DE_TITULO
+C 0x42D8 mientras quede espera, corre la demo
+C 0x42EC de fabrica se juega con joystick; las teclas 3 y 4 lo cambian
+C 0x42F7 fila 0 del teclado: las teclas 0 a 7
+C 0x42FB el bit 0 -la tecla 0- no se usa; se descarta de entrada
+C 0x42FF tecla 1: un jugador, joystick
+C 0x4305 tecla 2: dos jugadores, joystick
+C 0x430A teclas 3 y 4: se juega con el teclado
+C 0x4311 tecla 3: un jugador, teclado
+C 0x4317 tecla 4: dos jugadores, teclado
+C 0x431A sin tecla, se vuelve a dejar correr la demo
+L 0x431C UN_JUGADOR
+L 0x431F DOS_JUGADORES
+L 0x4321 ARRANCA_LA_PARTIDA
+L 0x4328 PARPADEA_LA_ELECCION
+C 0x432C el bit 3 de la cuenta de fotogramas: se enciende y se apaga cada 8
+L 0x4340 MIRA_SI_EMPIEZA
+C 0x4347 el bit 6 de la cuenta: unos dos segundos de margen
+B 0x434D MONTAR LA PARTIDA. Carga los caracteres y los sprites, genera las cuatro versiones desplazadas de cada dibujo, pone tres vidas y suelta la musica de arranque.
+L 0x434D MONTA_LA_PARTIDA
+C 0x434D el primer escalon de vida extra: 1 = 10000 puntos, para los dos jugadores
+C 0x4373 bit 0 de 0xE042: el rotador tiene que mezclar dos capas
+C 0x43D3 otra vez la copia solapada, ahora con los dibujos de la partida
+C 0x43E5 en la demo no se ponen vidas
+C 0x43EB tres vidas
+C 0x4418 0xE040 bit 4: lo primero es montar la fase
+C 0x4428 las tres partituras de la musica de arranque, una por canal
+C 0x443B doce unidades de espera: lo que dura la musica
+L 0x4445 EMPIEZA_LA_VIDA
+C 0x4455 registro 15 del PSG: 0x8F para el mando del jugador 1 y 0xCF para el del 2
+L 0x4451 ELIGE_EL_MANDO
+L 0x445F PON_EL_MANDO
+L 0x4462 LA_VIDA
+C 0x446D en un jugador se borran los rotulos del segundo
+L 0x4480 MIRA_LAS_VIDAS
+C 0x4483 las vidas que quedan, dibujadas de una en una
+C 0x4493 no se dibujan mas de siete vidas aunque haya mas
+L 0x4499 PINTA_LAS_VIDAS
+B 0x44A4 EL RECORD Y LA VIDA EXTRA. Compara los puntos del jugador con el record y, si lo pasa, lo copia. Despues mira si toca vida extra: el escalon esta en 0xE005 y se compara con el byte ALTO de los puntos, o sea con las decenas de millar. Arranca en 1 -10000 puntos- y sube de 5 en 5, asi que la segunda vida extra llega a los 60000 y luego cada 50000.
+L 0x44A4 RECORD_Y_VIDA_EXTRA
+C 0x44A7 los puntos del jugador que juega
+C 0x44B4 resta de tres bytes, del mas bajo al mas alto
+C 0x44BA sin acarreo el jugador ha pasado el record
+L 0x44B4 COMPARA_CON_EL_RECORD
+L 0x44C3 PINTA_EL_RECORD
+C 0x44C6 VRAM 0x3859: fila 2, columna 25
+L 0x44D5 PINTA_LOS_PUNTOS
+C 0x44D8 VRAM 0x38D9 -fila 6- el jugador 1, y 0x3939 -fila 9- el jugador 2
+L 0x44E5 MIRA_LA_VIDA_EXTRA
+C 0x44F8 el escalon se compara con el byte alto: las decenas de millar
+C 0x4503 el escalon sube 5, o sea 50000 puntos mas
+C 0x4509 una vida mas
+C 0x450D y el sonido de la vida extra
+L 0x4516 LA_DEMO_ESPERA_TECLA
+L 0x452A MIRA_SI_SE_ACABO_LA_VIDA
+C 0x4532 borra el 1UP o el 2UP que parpadea
+L 0x454D UNA_VIDA_MENOS
+C 0x4558 sin vidas, se acabo
+C 0x455C con un solo jugador se sigue en la misma partida
+C 0x4563 en dos jugadores le toca al otro, si le quedan vidas
+L 0x456C CAMBIO_DE_JUGADOR
+B 0x4587 SE ACABO LA PARTIDA. Suelta la musica del final por dos canales y espera a que el canal 2 se calle sola, sin contar fotogramas.
+L 0x4587 FIN_DE_PARTIDA
+C 0x4593 las dos partituras del final
+C 0x459F 0xE043 = 0x40: en los fotogramas siguientes la interrupcion solo hace sonar
+L 0x45BA ESPERA_A_QUE_ACABE
+C 0x45BA se espera a que el propio canal 2 se apague
+L 0x45D0 BORRA_LOS_MARCADORES
+L 0x45DD VUELTA_AL_TITULO
+C 0x45DD borra de 0xE040 a 0xE09F: fase, casas y puntos de los dos jugadores
+
+# ---------------------------------------------------------------------------
+# LOS MANDOS, LOS ROTULOS Y EL MARCADOR
+# ---------------------------------------------------------------------------
+L 0x45F5 LEE_EL_JOYSTICK Registro 14 del PSG
+L 0x45FD LEE_UNA_FILA Fila A del teclado -> A = sus ocho teclas, a cero las pulsadas
+C 0x45FF el puerto C del PPI se escribe dos veces para dar tiempo a la matriz
+L 0x4606 LOS_CURSORES_COMO_JOYSTICK
+C 0x4606 fila 8 del teclado: los cuatro cursores y el espacio
+C 0x4613 los cuatro cursores no salen en el mismo orden que el joystick: se traducen por la tabla de 0x49B7
+L 0x461C PINTA_LA_PANTALLA_DE_TITULO Las cinco listas de rotulos de 0x4A04
+L 0x4624 CINCO_LISTAS
+B 0x462C EL INTERPRETE DE ROTULOS. Una lista empieza con la direccion de VRAM en dos bytes, el ALTO delante, y sigue con los caracteres tal cual. El 0x1F es "repetir": detras van cuantos y cual. El 0x0F cierra el trozo y detras viene la direccion del siguiente; dos 0x0F seguidos cierran la lista.
+L 0x462C PINTA_ROTULOS
+C 0x462C la direccion de VRAM, con el byte ALTO delante
+C 0x4634 0x1F: detras van cuantas veces y que caracter
+C 0x4641 0x0F cierra el trozo
+C 0x464B un segundo 0x0F seguido cierra la lista entera
+L 0x4632 SIGUIENTE_CARACTER
+L 0x4641 MIRA_SI_ACABA
+L 0x4649 MIRA_SI_HAY_MAS
+B 0x4651 PINTA TRES BYTES BCD. Seis cifras, de dos en dos por byte, empezando por el mas alto. Los patrones de las cifras estan en los codigos 0xE0 a 0xE9, asi que basta con sumar 0xE0 al digito.
+L 0x4651 PINTA_SEIS_CIFRAS
+C 0x4658 los patrones de las cifras empiezan en el codigo 0xE0
+L 0x4656 CIFRA_A_CIFRA
+L 0x466D PASA_AL_OTRO_JUGADOR Devuelve acarreo si al otro no le quedan vidas
+B 0x467F EL 1UP QUE PARPADEA. Cada 64 fotogramas enciende o apaga el rotulo del jugador que juega.
+L 0x467F PARPADEO_DEL_JUGADOR
+C 0x4684 64 fotogramas por parpadeo
+C 0x469E VRAM 0x38B9 el jugador 1 y 0x3919 el jugador 2
+B 0x46AE SUMAR PUNTOS. BC lleva lo que se suma, en BCD, y va a los tres bytes del jugador que juega. En la demo no se suma nada.
+L 0x46AE SUMA_PUNTOS
+C 0x46AE la demo no puntua
+L 0x46CE BORRA_LA_PANTALLA Los 768 caracteres de la tabla de nombres
+L 0x46DF BORRA_EL_AREA_DE_JUEGO Solo 24 columnas de cada fila: el marcador del lateral se queda
+C 0x46E4 24 columnas por fila, y 24 filas
+C 0x46EC de una fila a la siguiente van 32 caracteres
+B 0x46F6 EL CHOQUE. Compara la caja de la rana -en DE- con la del objeto -en BC- usando los cuatro margenes que la tabla de 0x49C7 guarda para cada tipo. Devuelve acarreo si se tocan.
+L 0x46F6 HAY_CHOQUE
+C 0x46F9 cuatro margenes por tipo, asi que el indice se multiplica por cuatro
+C 0x46FE primero la vertical
+C 0x470C y despues la horizontal
+L 0x4708 POR_ARRIBA
+L 0x470C LA_HORIZONTAL
+L 0x4718 NO_HAY_CHOQUE
+B 0x471A LOS TRES TERCIOS DE UNA COPIA. SCREEN 2 tiene los patrones y los colores partidos en tres tercios de 2 KB, y el juego los quiere iguales. En vez de tres copias hace UNA de 4095 bytes con el destino 2 KB por delante del origen: al pasar del primer tercio ya esta leyendo lo que acaba de escribir, asi que el segundo se propaga solo al tercero.
+L 0x471A REPARTE_EN_LOS_TERCIOS
+C 0x471A 4095 bytes: los dos tercios que faltan, de una vez
+C 0x471D leer de la VRAM pide su propia direccion, y escribir otra
+L 0x471D BYTE_A_BYTE
+L 0x4733 ESPERA Deja pasar A unidades de 0xE018, o sea 32 fotogramas cada una
+L 0x4737 ESPERANDO
+B 0x473C EL ROTADOR DE PATRONES. Los troncos, las tortugas y los coches se mueven de dos en dos pixeles sin usar sprites: lo que se guarda en la VRAM son CUATRO versiones de cada dibujo, desplazadas 0, 2, 4 y 6 pixeles. Esta rutina sube la version sin desplazar y luego genera las otras tres corriendo el juego entero de patrones dos bits cada vez, arrastrando los bits de un caracter al de al lado.
+L 0x473C SUBE_Y_ROTA
+L 0x474F COPIA_HASTA_EL_0x11 El 0x11 cierra el grupo de patrones
+L 0x4752 GRUPO_A_GRUPO
+L 0x475F LAS_TRES_VERSIONES_MAS
+C 0x475F tres pasadas mas: 2, 4 y 6 pixeles
+C 0x476C dos bits por pasada, y el acarreo pasa al caracter de al lado
+C 0x4785 con el bit 0 de 0xE042 se mezclan dos capas con un OR
+L 0x4765 UN_PASE_ENTERO
+L 0x4767 UN_CARACTER
+L 0x476C DOS_BITS
+L 0x4798 MEZCLA_LAS_CAPAS
+L 0x47A6 SUBE_ESTA_VERSION
+L 0x47B8 BORRA_LA_CAPA
+L 0x47BF SIGUIENTE_VERSION
+L 0x47CC SUBE_HASTA_EL_0x11
+L 0x47CE OCHO_BYTES
+L 0x47DA SUBE_DEL_REVES Los mismos patrones, pero cada grupo escrito de atras adelante: asi salen los dibujos mirando al otro lado
+L 0x47DD GRUPO_DERECHO
+L 0x47EF GRUPO_INVERTIDO
+L 0x47F3 OCHO_BYTES_AL_REVES
+L 0x4802 SUBE_REPETIDOS Parejas (cuantos, que byte)
+B 0x480E LAS LISTAS DE PATRONES DE LOS COCHES. Cada tipo de vehiculo es una tira de caracteres consecutivos que se monta en RAM al arrancar. Los tres tamanos salen de aqui: 5, 7 y 9 caracteres de largo.
+L 0x480E MONTA_LOS_COCHES
+L 0x4827 MONTA_UN_COCHE
+L 0x484B PRIMERA_COLUMNA
+L 0x4851 COLUMNAS_DE_ENMEDIO
+L 0x485F ULTIMA_COLUMNA
+B 0x486D LAS LISTAS DE PATRONES DEL RIO. Los troncos y las tortugas, con sus plantillas en 0x4DDF, 0x4DEB y 0x4E02.
+L 0x486D MONTA_EL_RIO
+L 0x48D6 MONTA_CUATRO_LARGOS
+L 0x48E4 UN_LARGO
+L 0x4901 SIGUIENTE_LARGO
+L 0x490D MONTA_DESDE_PLANTILLA
+L 0x4916 CUATRO_VECES
+L 0x4917 LISTA_HASTA_EL_0xFF
+L 0x4929 CIERRA_LA_LISTA
+L 0x4939 COPIA_Y_DESPLAZA
+L 0x4942 SUMA_A_CADA_UNO
+L 0x4956 SUBE_BLOQUE_CON_CABECERA La direccion de VRAM y el tamano van delante de los datos
+L 0x4964 RELLENA_FILA_CRECIENTE B caracteres consecutivos, y despues salta a la fila de abajo
+L 0x4969 UNO_A_UNO
+L 0x4975 FICHA_DE_VIDAS
+L 0x4978 FICHA_DEL_JUGADOR
+L 0x497E HL_MAS_A
+L 0x4983 PON_DIRECCION_VDP DE al puerto 0x99: con el bit 14 puesto, para escribir
+L 0x498A SUBE_B_BYTES
+L 0x498D SUBE_B_BYTES_YA
+L 0x4994 RELLENA_CON_C
+L 0x4998 RELLENA_CON_A
+L 0x499E QUE_JUGADOR_ES Devuelve Z si es el primero
+
+# ---------------------------------------------------------------------------
+# LA RANA
+# ---------------------------------------------------------------------------
+B 0x4E21 LA RANA. Un salto por pulsacion, y no se admite otro hasta que se suelta el mando. Arriba y abajo mueven 16 pixeles -una fila entera- y los lados solo 8, o sea media. Cada salto cambia el dibujo: 0x04 mirando arriba, 0x10 abajo, 0x1C a la izquierda y 0x24 a la derecha. Mientras dura el salto, el segundo sprite se queda plantado en la casilla de la que salio.
+L 0x4E21 MUEVE_LA_RANA
+C 0x4E21 con el bit 0 puesto la rana esta muerta y no se mueve
+C 0x4E29 bit 5: esta a mitad de un salto
+C 0x4E2E bit 1: ya se ha movido, y no se repite hasta soltar
+C 0x4E36 0xE286 es el segundo sprite, el que se queda atras
+L 0x4E47 NO_SE_HA_PULSADO_NADA
+L 0x4E4D SALTA_ARRIBA
+C 0x4E4F una fila entera son 16 pixeles
+C 0x4E61 sube la cuenta de filas alcanzadas
+C 0x4E65 diez puntos por cada salto hacia adelante
+L 0x4E6B SALTA_ABAJO
+C 0x4E6C por debajo de la fila 0xA8 no se puede bajar mas
+L 0x4E86 SALTA_A_LA_IZQUIERDA
+C 0x4E89 el borde izquierdo esta en 0x11
+C 0x4E8C a los lados solo se mueve media casilla, 8 pixeles
+L 0x4E96 SALTA_A_LA_DERECHA
+C 0x4E99 y el derecho en 0xB0
+L 0x4EA4 EL_SALTO_EMPIEZA
+L 0x4EA6 ARRANCA_EL_SALTO Lo comun a los cuatro sentidos: el sonido, el sprite y la cuenta
+C 0x4EA6 en la demo el salto no suena
+C 0x4EB4 el sonido del salto
+C 0x4EC6 bit 5: queda saltando ocho fotogramas
+L 0x4ECC ACABA_EL_SALTO
+C 0x4ECF al posarse, el segundo sprite se recoge
+L 0x4EE1 ESCONDE_EL_SEGUNDO
+B 0x4EEC EL BICHO QUE CRUZA EL RIO. Solo aparece con el tiempo por debajo de 0x71 y con la rana en la mitad de arriba. Cruza en linea recta y, al cogerlo, la rana se lo lleva a casa.
+L 0x4EEC EL_BICHO_DEL_RIO
+C 0x4EEC solo con el tiempo por debajo de 0x71
+C 0x4EF5 con la rana ya cargada no sale otro
+L 0x4F09 EL_BICHO_SALE
+L 0x4F2F EL_BICHO_ANDA
+L 0x4F5B PINTA_EL_BICHO
+C 0x4F63 fuera de la pantalla se le pone Y = 0xCF, que lo esconde
+L 0x4F6E ESCONDE_EL_BICHO
+L 0x4F70 PINTALO
+L 0x4F73 EL_BICHO_SE_VA
+L 0x4F7F EL_BICHO_VUELVE
+B 0x4F8D EL COCODRILO. Cuatro sprites en fila. Abre y cierra la boca en un ciclo de 32 pasos: 22 con el dibujo 0x40 -abierta- y 10 con el 0x3C. Con la boca abierta, la parte de delante mata en vez de sostener a la rana; lo comprueba 0x524F.
+L 0x4F8D EL_COCODRILO
+C 0x4F95 el ciclo dura 32 pasos del carril
+C 0x4F9E dibujo 0x40: la boca abierta, y esa mata
+C 0x4FA5 a los 10 pasos que quedan, el dibujo 0x3C
+L 0x4FA2 BAJA_EL_CICLO
+L 0x4FB0 COLOCA_EL_COCODRILO
+C 0x4FB0 la X del carril esta en cuartos de caracter, y 0x50E0 la pasa a pixeles
+L 0x4FBE POR_LA_IZQUIERDA
+L 0x4FC8 MIRA_EL_BORDE
+L 0x4FCE POR_LA_DERECHA
+L 0x4FDE MUY_A_LA_IZQUIERDA
+L 0x4FE8 CASI_FUERA
+L 0x4FF0 ESCONDE_EL_PRIMERO
+L 0x4FF4 MIRA_EL_TERCERO
+L 0x4FFC MIRA_EL_SEGUNDO
+L 0x5004 MIRA_EL_CUARTO
+L 0x5012 PINTA_LOS_CUATRO
+L 0x5020 PINTA_PARTIDO
+L 0x5036 TROZO_A_TROZO
+L 0x504C COLOREA_EL_COCODRILO
+L 0x505B TRES_TROZOS
+B 0x5063 LA RANA QUE SE RESCATA. La que aparece en un tronco y hay que llevar a casa. NO sale hasta la fase 3: `cp 003h / ret c` lo corta antes. El dibujo se elige con el registro R del refresco de la memoria, asi que sale uno u otro sin ninguna tabla de azar.
+L 0x5063 LA_RANA_RESCATABLE
+C 0x506A antes de la fase 3 no aparece nunca
+C 0x508D el registro de refresco hace de moneda al aire
+C 0x508F dibujo 0x2C o 0x34, uno de cada dos
+L 0x507B BAJA_LA_CUENTA
+L 0x509A COLOCALA
+L 0x50AE PASO_CORTO
+L 0x50B0 MIRA_EL_DIBUJO
+L 0x50BD MUEVELA
+L 0x50CF POR_LA_IZQUIERDA_TAMBIEN
+L 0x50D7 CAMBIA_DE_SENTIDO
+L 0x50E0 CUARTOS_A_PIXELES La posicion de los carriles va en cuartos de caracter: (A-0x24)*2+0x10
+B 0x50E7 PIDE UN SONIDO EN EL CANAL 3. Solo entra si el canal esta libre o si la partitura que se pide esta en una direccion MAS BAJA que la que suena: la prioridad de cada efecto es su propia direccion en el cartucho.
+L 0x50E7 PIDE_SONIDO
+C 0x50ED la prioridad de un efecto es su direccion: gana la mas baja
+L 0x50F7 PON_EL_SONIDO
+B 0x50FB EL RELOJ DE LA PARTIDA. El tiempo arranca en 0x96 -150 en BCD- y baja uno cada 20 fotogramas. Al llegar a cero la rana muere. Por el camino pasan dos cosas que no se ven jugando: a los 0x60 cuatro objetos de la fila 15 se hacen mas rapidos, y a los 0x32 el caracter de la barra cambia de color.
+L 0x50FB EL_RELOJ
+C 0x5100 veinte fotogramas por unidad de tiempo
+C 0x5104 restar uno en BCD es sumar 0x99 y ajustar
+C 0x510A se acabo el tiempo: la rana muere
+C 0x511A al llegar a 0x60, y una sola vez por fase, cuatro objetos de la fila 15 aceleran
+C 0x512B cuatro fichas seguidas, y a cada una se le baja la velocidad en uno
+C 0x514B al llegar a 0x32 la barra del tiempo se pone roja
+C 0x5155 32 bytes en la tabla de color: los caracteres de la barra
+L 0x511A MIRA_LOS_0x60
+L 0x5130 CUATRO_MAS_RAPIDOS
+L 0x5138 YA_ACELERARON
+L 0x513B MIRA_LOS_0x32
+L 0x514A COMPARA_CON_0x32
+B 0x515F LA BARRA DEL TIEMPO. Ocho caracteres de 0xE055 en adelante, aunque solo se dibujan seis. Cada uno pasa por cinco dibujos -del 5 al 9- y luego se apaga; la barra avanza un paso cada cuatro unidades de tiempo.
+L 0x515F LA_BARRA_DEL_TIEMPO
+C 0x5166 un paso cada cuatro unidades de tiempo
+C 0x516D busca el primer tramo que aun no este apagado
+C 0x5173 al pasar del 9 el tramo se apaga
+C 0x517D VRAM 0x3A59: fila 18, columna 25
+L 0x5168 BAJA_LA_CUENTA_DE_BARRA
+L 0x516D BUSCA_EL_TRAMO
+L 0x517A PINTA_LA_BARRA
+
+# ---------------------------------------------------------------------------
+# LOS CHOQUES, LAS CASAS Y LAS ESCENAS
+# ---------------------------------------------------------------------------
+B 0x5185 LOS CHOQUES. Se mira todo contra la rana en el mismo sitio: el bicho del rio, la rana que se rescata, los bordes de la pantalla y, si esta en el agua, la fila de troncos o tortugas que le toque segun a que altura haya llegado. Devuelve acarreo si la rana ha muerto.
+L 0x5185 LOS_CHOQUES
+C 0x5185 diecisiete fichas, y a todas se les quita el bit de "lleva la rana encima"
+C 0x519F tipo 3: la caja del bicho del rio
+C 0x51A4 el sonido de cogerlo
+C 0x51AD bit 6: la rana ya lleva algo a casa
+C 0x51E1 fuera de 0x0A a 0xB8 la rana se ha salido por un lado
+C 0x51EC por encima de la sexta fila ya no hay rio que valga
+C 0x51F5 y si esta en el agua, la fila que le toca: la 1 es la de mas abajo
+L 0x518A QUITA_EL_BIT_4
+L 0x51CC CHOCA_CON_LA_RESCATABLE
+L 0x51DD MIRA_LOS_BORDES
+L 0x51E8 EN_QUE_FILA_ESTA
+D 0x51F8 0x5203 filas_del_rio  Las cuatro filas de agua, de abajo arriba, para el `call 0x57FF` de 0x51F5. La primera palabra es 0 porque la fila 0 no es agua.
+F 0x51F8 w1
+L 0x5203 MIRA_ESA_FILA
+L 0x5206 LA_ORILLA_DE_ARRIBA
+C 0x5206 la fila 10 es la de las casas
+C 0x520A las cuatro filas de la carretera se numeran a partir de la 6
+D 0x520F 0x5218 filas_de_la_carretera  Las cuatro filas de asfalto, para el `call 0x57FF` de 0x520C.
+F 0x520F w1
+L 0x5218 MIRA_LA_CARRETERA
+C 0x521E en la carretera, tocar algo mata
+L 0x5224 SE_SUBE_ENCIMA
+C 0x5224 bit 4: este objeto lleva la rana encima y tira de ella
+B 0x5228 RECORRE UNA FILA. Va ficha a ficha comparando con la rana hasta el que tiene el bit 7, que cierra la fila. En el agua, tocar algo es SALVARSE; el unico caso aparte es el cocodrilo -tipo 0x0D-, que con la boca abierta mata por delante.
+L 0x5228 RECORRE_LA_FILA
+C 0x5235 la Y de la rana se parte por la mitad para pasarla a la escala del carril
+C 0x5246 bit 7: esta era la ultima ficha de la fila
+L 0x522A FICHA_A_FICHA
+L 0x524F MIRA_SI_ES_COCODRILO
+C 0x5252 tipo 0x0D: el cocodrilo
+C 0x525B con el dibujo 0x40 la boca esta abierta
+C 0x5269 y entonces la cabeza mata en vez de sostener
+L 0x526E NO_LE_HA_COMIDO
+L 0x526F ESTA_A_SALVO
+L 0x5271 SE_LO_HA_COMIDO
+L 0x5274 MIRA_SI_ENTRA_EN_CASA
+C 0x5277 la casa cae cada 32 pixeles, con 8 de margen
+C 0x5288 0xE040 bit 1: se pasa al bonus del tiempo
+B 0x528F METER LA RANA EN CASA. Las cinco casas estan en las columnas 4, 8, 12, 16 y 20, y cada una tiene su bit en 0xE080. Si el bit YA estaba puesto, la casa esta ocupada y la rana muere: `jp 0x5305` sin mas.
+L 0x528F ENTRA_EN_CASA
+C 0x529B por debajo de 0x25 es la primera casa
+C 0x52AB y por encima de 0x85, la quinta
+C 0x52AD la casa ya estaba ocupada: se muere
+C 0x52E1 una casa mas de las cinco
+C 0x52FB 0xE040 bit 2: fase superada
+L 0x52B6 CASA_1
+L 0x52C1 CASA_2
+L 0x52CC CASA_3
+L 0x52D7 CASA_4
+L 0x52E0 CUENTA_LA_CASA
+L 0x52E2 PINTA_LA_RANA_EN_CASA
+C 0x52E2 la rana en casa es un cuadrado de 2x2: 0A 0B arriba, 0C 0D abajo
+C 0x52EE +32 caracteres para bajar una fila
+L 0x52FE CASA_OCUPADA_SE_MUERE
+D 0x5301 0x5305 rana_en_casa  Los cuatro caracteres con los que se dibuja una rana metida en su casa: 0x0A y 0x0B arriba, 0x0C y 0x0D abajo.
+F 0x5301 2
+B 0x5305 LA MUERTE. Devuelve la rana a la orilla de abajo, calla lo que sonara y suelta la musica de la muerte.
+L 0x5305 SE_MUERE
+C 0x5328 la rana vuelve a la orilla, sin salirse por los lados
+C 0x5339 Y = 0x50 y el dibujo 0x0A: la rana tumbada
+C 0x5344 la musica de la muerte, en el canal 3
+L 0x534B ACABA_LA_MUERTE
+C 0x534F al llegar a 1 se pasa a la escena de fin de vida
+L 0x535C ESCONDE_O_TUMBA
+L 0x5369 PINTA_LOS_DOS_SPRITES
+C 0x536C el segundo sprite se aparta con Y = 0xCF
+B 0x5378 EL BONUS DEL TIEMPO. Con la rana ya en casa, el reloj se vacia de golpe y cada unidad que quedaba vale diez puntos. Si con esa era la quinta casa, sube la fase.
+L 0x5378 BONUS_DEL_TIEMPO
+C 0x537B bit 1 de 0xE043: mientras suena la musica, no se descuenta
+C 0x538A un paso cada dos fotogramas
+C 0x5391 una unidad menos de tiempo, en BCD
+C 0x5399 diez puntos por unidad
+C 0x53A8 el tic de la cuenta
+C 0x53B1 bit 6: la rana traia algo, y se dibuja en la casa
+C 0x53C0 dibujo 0x4C, en blanco
+L 0x53AE MIRA_SI_TRAIA_ALGO
+L 0x53D6 SE_ACABO_EL_BONUS
+C 0x53EA con las cinco casas llenas se cambia de fase
+C 0x53F5 la fase da la vuelta al pasar de 99
+C 0x53FE y el numero que se ve, en BCD, no puede quedarse en cero
+C 0x540E las dos partituras de la fase superada
+L 0x53FC SUBE_EL_NUMERO
+L 0x5405 GUARDA_EL_NUMERO
+L 0x5420 A_MONTAR_OTRA_FASE
+
+B 0x542A MONTAR LA FASE. La disposicion de una fase no se guarda una por una: se elige con `(fase-1) mod 5` entre CINCO entradas de las que dos apuntan al mismo sitio, asi que trazados distintos solo hay CUATRO. Lo que separa la fase 3 de la 2 no es el trazado -es el mismo- sino dos retoques: el primer objeto de la fila de arriba pasa a ser cocodrilo y a la fila 15 se le quita un objeto. Encima van tres escalones de dificultad, en las fases 2, 6 y 11.
+L 0x542A MONTA_LA_FASE
+C 0x542A limpia de 0xE280 a 0xE29F: la rana y lo que la acompana
+C 0x5443 con la fase ya montada no se vuelve a montar
+C 0x544B (fase-1) mod 5, restando de cinco en cinco
+C 0x5454 y con eso, cual de los cuatro trazados
+L 0x544B RESTA_CINCO
+L 0x5453 ELIGE_EL_TRAZADO
+D 0x5457 0x5462 trazados_por_fase  Los cinco huecos del ciclo de fases, para el `call 0x57FF` de 0x5454. El segundo y el tercero apuntan a la MISMA descripcion -0x5CCD-: las fases 2 y 3 llevan el mismo trazado y solo las separan los retoques de 0x5497.
+F 0x5457 w1
+L 0x5462 MONTA_LAS_FICHAS
+C 0x5462 la descripcion empieza con la velocidad de la fila
+C 0x546B y despues las parejas tipo/posicion, hasta el 0xFF
+C 0x5471 la velocidad va igual en las tres fichas de la fila
+C 0x5477 0xFF cierra la fila
+C 0x547D y un 0xFF donde iria la siguiente velocidad cierra la descripcion
+C 0x5481 el byte de detras dice cuanto se avanza en las fichas: asi cada fila cae en su sitio
+L 0x5467 OTRA_FILA
+L 0x5469 OTRA_FICHA
+L 0x546B DOS_BYTES
+L 0x5481 SALTA_EN_EL_DESTINO
+L 0x5489 LOS_RETOQUES
+C 0x5489 las dos tortugas que se hunden de salida: la primera de la fila 5 y la segunda de la fila 9. Desde la fase 6, 0x54D6 anade una tercera
+C 0x548E arrancan con el contador desfasado -0x80 y 0x8A- para no hundirse a la vez
+C 0x5493 en el tercer hueco del ciclo -fases 3, 8, 13...- y solo ahi
+C 0x549A el primer objeto de la fila de arriba pasa a ser cocodrilo
+C 0x549C y a la fila 15 se le pone el bit de "ultimo" al segundo, o sea que se queda con dos objetos en vez de tres
+L 0x54A1 LA_DIFICULTAD
+C 0x54A8 desde la fase 2: ocho objetos del rio suben dos de tipo
+C 0x54C9 desde la fase 6: los relojes de las filas 9 y 13 a 0x11, o sea un paso por turno
+C 0x54DB desde la fase 11: el bit 7 de la fila 7
+L 0x54B2 SUBE_OCHO_TIPOS
+L 0x54BB PON_LOS_RELOJES
+L 0x54C0 OCHO_RELOJES
+L 0x54CD DESDE_LA_FASE_6
+L 0x54DF DESDE_LA_FASE_11
+L 0x54E4 COPIA_LAS_FICHAS_FIJAS
+C 0x54FA la lista de la demo vuelve al principio en cada fase
+L 0x5503 PON_EL_TIEMPO
+C 0x5506 el tiempo arranca en 150
+C 0x550B veinte fotogramas por unidad
+C 0x5513 los ocho tramos de la barra, todos al dibujo 5
+C 0x551B la barra empieza azul; a los 0x32 se pondra roja
+C 0x5525 la rana a su sitio: dos sprites, Y = 0xA8 y X = 0x58
+C 0x5541 el numero de la fase
+C 0x5550 las cinco casas vacias, cuatro caracteres cada una
+C 0x5569 y las ranas que ya estuvieran metidas, que se vuelven a pintar
+L 0x5552 CINCO_CASAS
+L 0x5576 CASA_A_CASA
+L 0x5580 SIGUIENTE_CASA
+D 0x558C 0x5594 rana_de_salida  Las dos fichas de sprite de la rana recien puesta: Y = 0xA8, X = 0x58, dibujos 0x00 y 0x08, color 0x0A.
+F 0x558C 4
+D 0x5594 0x55A4 cocodrilo  Las cuatro fichas de sprite del cocodrilo, que se copian a 0xE2B2: la cabeza con el dibujo 0x38 en negro y tres tramos de lomo -0x40, 0x44, 0x48- en rojo claro.
+F 0x5594 4
+D 0x55A4 0x55C4 decorado  Rotulos para 0x462C: la mediana en las filas 11 y 12 -22 veces el caracter 3-, la orilla de abajo en las filas 21, 22 y 23 -22 veces el 4- y el borde de las casas en la fila 2.
+D 0x55C4 0x55DA borde_de_las_casas  Los 22 caracteres de la fila 1, la que separa las casas del rio.
+F 0x55C4 22
+D 0x55DA 0x55E1 fin_del_decorado  La cola del rotulo anterior: el 0x0F que cierra el trozo y el que cierra la lista.
+D 0x55E1 0x55E5 casa_vacia  Los cuatro caracteres de una casa sin rana, que 0x5552 escribe cinco veces seguidas en la fila 0.
+F 0x55E1 4
+
+# ---------------------------------------------------------------------------
+# EL MOTOR DE LOS CARRILES
+# ---------------------------------------------------------------------------
+B 0x55E5 EL MOTOR DE LOS CARRILES. Ocho filas se mueven -cuatro de rio y cuatro de carretera- y no caben en un fotograma, asi que van repartidas en tres: en el primero las filas 3, 5 y 7; en el segundo las 17 y 19; y en el tercero las 9, 13 y 15. Cada fila tiene ademas su propio reloj, asi que dentro de su turno solo se mueve cuando le toca.
+L 0x55E5 MUEVE_LOS_CARRILES
+C 0x55E8 tres fotogramas por vuelta
+C 0x55FD fila 17 de la pantalla
+C 0x5612 y fila 19
+C 0x5620 fila 3    C 0x5631 fila 5    C 0x5642 fila 7
+C 0x5654 fila 9    C 0x5665 fila 13   C 0x5676 fila 15
+L 0x55F0 QUE_TURNO_TOCA
+L 0x561A TURNO_DE_ARRIBA
+L 0x564E TURNO_DE_ENMEDIO
+B 0x5682 EL RELOJ DE UN CARRIL. Un solo byte para las dos cosas: el nibble de abajo cuenta y el de arriba dice cada cuanto. Al llegar el de abajo a cero se recarga con el de arriba y se devuelve Z, que es lo que autoriza a mover la fila.
+L 0x5682 LE_TOCA_A_ESTE_CARRIL
+C 0x5684 mientras el nibble de abajo no llegue a cero, no toca
+C 0x5687 y al llegar, se recarga con el de arriba
+L 0x5690 FILA_A_LA_DERECHA_MEZCLADA
+L 0x5694 FILA_A_LA_DERECHA
+L 0x5698 OBJETO_A_LA_DERECHA
+C 0x5698 la posicion avanza lo que diga la velocidad
+C 0x56A1 pasado 0x7C, el objeto vuelve a entrar por el 0x04
+C 0x56AE tipo 0x0D: el cocodrilo, que ademas abre y cierra la boca
+C 0x56C1 bit 7: era el ultimo de la fila, asi que toca volcarla
+L 0x56A9 MIRA_EL_TIPO
+L 0x56BE PINTA_ESTE
+L 0x56C1 MIRA_SI_ES_EL_ULTIMO
+L 0x56D2 FILA_A_LA_IZQUIERDA_MEZCLADA
+L 0x56D6 FILA_A_LA_IZQUIERDA
+L 0x56DA OBJETO_A_LA_IZQUIERDA
+C 0x56E3 por debajo de 0x04, el objeto vuelve a entrar por el 0x7C
+B 0x56EB LAS TORTUGAS QUE SE HUNDEN. Solo se aplica a los tipos 7 a 12, y solo si el cuarto byte de la ficha lleva el bit 7 puesto -que 0x5489 pone a mano en DOS fichas de toda la fase-. El contador da una vuelta de 0x80 a 0xC0, y por el camino el tipo sube uno en 0x90 y otro en 0xA0, y vuelve a bajar en 0xB0 y en 0xC0. Como el tipo es el que elige el dibujo, la tortuga se hunde y vuelve a salir sola.
+L 0x56EB MIRA_SI_SE_HUNDE
+C 0x56F0 solo los tipos del 7 al 12
+C 0x56F8 y solo con el bit 7 del cuarto byte, que se pone a mano en 0x5489
+C 0x5707 en 0x90 se hunde un paso
+C 0x570C y en 0xA0 otro: ahi esta debajo del agua
+C 0x5711 en 0xB0 empieza a salir
+C 0x5716 y en 0xC0 vuelve a estar entera, y el contador da la vuelta
+L 0x570C MIRA_LOS_0xA0
+L 0x5711 MIRA_LOS_0xB0
+L 0x5716 MIRA_LOS_0xC0
+L 0x571F GUARDA_EL_TIPO
+L 0x5722 PINTA_Y_SIGUE
+L 0x5736 LIMPIA_EL_BUFER Las dos filas de 40 columnas de 0xE600, con el caracter del fondo
+L 0x573B OCHENTA_BYTES
+L 0x5740 PINTA_UN_OBJETO
+C 0x5740 el nibble bajo del primer byte es el tipo
+C 0x5745 y con el, la lista de patrones que le corresponde
+D 0x5748 0x5765 listas_de_patrones  Los catorce tipos de objeto, cada uno con su lista de caracteres montada en RAM al arrancar. Es la tabla del `call 0x57FF` de 0x5745.
+F 0x5748 w1
+L 0x5765 VUELCA_AL_BUFER
+C 0x5765 los dos bits de abajo de la posicion eligen cual de las CUATRO versiones desplazadas -0, 2, 4 y 6 pixeles- se usa
+C 0x577B y el resto, entre cuatro, es la columna
+C 0x5787 de la fila de arriba a la de abajo van 40 bytes
+L 0x578A COLUMNA_A_COLUMNA
+B 0x5799 LA RANA VA MONTADA. Si el objeto lleva el bit 4, la rana esta encima y se la arrastra: se le suma DOS VECES la velocidad, porque la del carril va en cuartos de caracter y la de la rana en pixeles. El bit 5 hace lo mismo con la rana que se rescata.
+L 0x5799 ARRASTRA_LA_RANA
+C 0x5799 bit 4: este objeto lleva la rana encima
+C 0x57AD dos veces la velocidad: de cuartos de caracter a pixeles
+C 0x57B5 bit 5: y este lleva la rana que se rescata
+L 0x57B5 ARRASTRA_LA_OTRA
+L 0x57C9 VUELCA_LA_FILA
+C 0x57C9 22 columnas por fila, que es el ancho del area de juego
+L 0x57E4 SE_ACABO_LA_PARTIDA_YA
+L 0x57EF BORRA_BC_BYTES
+D 0x57F7 0x57FF busca_en_tabla_por_bytes  Es CODIGO, y no lo llama nadie: la version de esta rutina para tablas de un byte. `ex (sp),hl / ld c,a / ld b,0 / add hl,bc / ld b,(hl) / jr 0x5809` deja en B el byte numero A de la tabla que va detras del call y sigue en 0x5809, que es donde la version de dos bytes se salta la tabla. Quedo en el cartucho sin un solo llamador.
+F 0x57F7 8
+B 0x57FF EL BUSCADOR DE TABLAS. No es un despachador que salte: coge la direccion de retorno como base de una tabla incrustada DETRAS del propio call, devuelve en BC la palabra numero A, avanza hasta el 0xFF que la cierra y hace `ret` al byte de despues. Lo usan cuatro sitios, y por eso esas cuatro tablas hay que declararlas a mano: el trazador, si no, las lee como codigo.
+L 0x57FF BUSCA_EN_TABLA
+C 0x57FF la direccion de retorno ES la tabla
+C 0x5800 palabras, asi que el indice se dobla
+C 0x5809 y ahora hay que saltarse la tabla para volver detras de ella
+L 0x5809 HASTA_EL_0xFF
+L 0x5811 BORRA_LOS_SPRITES Y = 0xCF en los 32, que los saca de la pantalla
+L 0x581C CALLA_EL_SONIDO
+C 0x5827 doce, porque cada vuelta se lleva tres: los dos outi y el djnz
+L 0x582C PAREJA_A_PAREJA
+D 0x5838 0x5840 psg_al_silencio  Cuatro parejas registro/valor para callar el PSG: la mezcla al 0xB8 y los tres volumenes a cero.
+F 0x5838 2
+L 0x5840 FICHA_DEL_QUE_JUEGA Ocho bytes mas si le toca al segundo jugador
+
+# ---------------------------------------------------------------------------
+# LOS DATOS
+# ---------------------------------------------------------------------------
+D 0x4000 0x4012 cabecera  La cabecera del cartucho. "AB" y despues INIT, 0x41B4, con el byte bajo delante. Los otros tres vectores -STATEMENT, DEVICE y TEXT- van a cero: este cartucho solo se arranca.
+F 0x4000 2,w1,12
+D 0x49A3 0x49AB registros_del_vdp  Los ocho registros del VDP, que 0x421E sube del 0 al 7. SCREEN 2 con los nombres en 0x3800, los patrones en 0x2000, el color en 0x0000, los atributos de sprite en 0x3B00 y sus patrones en 0x1800, con sprites de 16x16.
+F 0x49A3 8
+D 0x49AB 0x49B7 doce_bytes_que_nadie_lee  Doce bytes justo detras de los registros del VDP a los que NO llega ninguna instruccion: el bucle de 0x421E lee ocho y para. Tienen forma de tres fichas de sprite -Y, X, dibujo, color-, las tres con Y = 0 y el dibujo 0x38, que es la cabeza del cocodrilo. Queda como pregunta abierta.
+F 0x49AB 4
+D 0x49B7 0x49C7 cursores_a_joystick  Los cuatro cursores no salen del teclado en el mismo orden en que los quiere el juego, asi que 0x4606 los pasa por aqui. El indice se monta con izquierda, arriba, abajo y derecha, y el valor sale en el orden del joystick: arriba, abajo, izquierda, derecha. Las dieciseis combinaciones estan cubiertas, y las imposibles -arriba con abajo, izquierda con derecha- dan 0x80, que no es ninguna direccion.
+F 0x49B7 16
+D 0x49C7 0x49FF margenes_de_choque  Cuatro margenes por cada uno de los CATORCE tipos de objeto, en el orden en que los pide 0x46F6: arriba, abajo, izquierda y derecha. Se ve de un vistazo lo largo que es cada cosa: el tipo 6 llega a 0x1E y es el tronco mas largo, y los tipos 0 y 1 se quedan en 6, que son los coches. Los tipos 9 y 12 los tienen los cuatro a CERO, y no es un descuido: son las tortugas del todo sumergidas, que no chocan con nada y por eso no sostienen a la rana.
+F 0x49C7 4
+D 0x49FF 0x4A04 cinco_bytes_sueltos  Cinco bytes -01 06 11 16 21- entre los margenes de choque y el primer rotulo, sin ninguna instruccion que los alcance. Van de cinco en cinco y de once en once. Pregunta abierta.
+F 0x49FF 5
+D 0x4A04 0x4A42 rotulos_del_titulo  La pantalla de titulo, en cuatro trozos para 0x462C: filas 5, 6, 8 y 12, todas en la columna 11.
+D 0x4A42 0x4A60 rotulo_tecla_1  Los 26 caracteres de la fila 15 desde la columna 4: la linea de la tecla 1, un jugador con joystick.
+F 0x4A42 2,26,2
+D 0x4A60 0x4A7E rotulo_tecla_2  Igual en la fila 17: la tecla 2, dos jugadores con joystick.
+F 0x4A60 2,26,2
+D 0x4A7E 0x4A9C rotulo_tecla_3  Fila 19: la tecla 3, un jugador con el teclado.
+F 0x4A7E 2,26,2
+D 0x4A9C 0x4ABA rotulo_tecla_4  Fila 21: la tecla 4, dos jugadores con el teclado.
+F 0x4A9C 2,26,2
+D 0x4ABA 0x4AD2 rotulo_jugador_1  Dos trozos en las filas 9 y 10 desde la columna 6, el aviso de a quien le toca.
+D 0x4AD2 0x4ADA rotulo_jugador_2  El mismo aviso para el segundo jugador. Los ocho bytes de aqui son solo su primer trozo: el segundo empieza en 0x4ADA y se usa TAMBIEN por su cuenta.
+D 0x4ADA 0x4AEA borra_el_1up  Aqui se solapan dos usos. Como final del rotulo de 0x4AD2 es su segundo trozo; y por su cuenta, 0x4697 se lleva estos dos primeros bytes -00 00- a la fila 5 columna 25 para apagar el 1UP que parpadea.
+D 0x4AEA 0x4B02 rotulo_de_fin  Lo que sale al acabarse la partida, en las filas 11 y 12.
+D 0x4B02 0x4B09 marcador_hi  El marcador del lateral derecho, en ocho trozos para 0x462C. Este primero es el HI de la fila 1.
+D 0x4B09 0x4B14 marcador_1up  Los dos primeros bytes -E1 EA- valen para dos cosas: son el 1UP dentro del rotulo entero y, sueltos, los que 0x4535 y 0x4687 escriben para encenderlo. Detras siguen los seis ceros de la fila 6.
+D 0x4B14 0x4B36 marcador_2up_y_resto  Igual con el 2UP en sus dos primeros bytes, y detras los seis ceros del segundo jugador, el STAGE de la fila 11, el PLAYER de la 14 y el TIME de la 17, todos en la columna 25.
+D 0x4B36 0x4DD3 patrones_del_juego  Doce bloques con cabecera para 0x4956: dos bytes de destino en la VRAM con el ALTO delante, uno de tamano y detras los datos. El tercero al undecimo son retoques de tres bytes sobre caracteres sueltos.
+D 0x4DD3 0x4DDF color_y_ultimo_patron  Ocho bytes con dos usos a la vez. El bloque de patrones que empieza en 0x4B36 llega hasta 0x4DDA, asi que estos son su ultimo caracter; y 0x4253 los lee como parejas -cuantos, que byte- para llenar la tabla de color: 248 veces el 0xF0 y 168 veces el 0x30 desde el caracter 1, y despues cuatro tandas de 256 desde el 0x80.
+F 0x4DD3 2
+D 0x4DDF 0x4DEB coches_por_tamano  Cuatro grupos de tres bytes para 0x486D: el primer caracter, cuanto se avanza y cuantos caben. De aqui salen las listas de los cuatro tipos de vehiculo.
+F 0x4DDF 3
+D 0x4DEB 0x4E02 troncos_cortos  Cuatro listas de caracteres cerradas por 0xFF, que 0x490D convierte en las listas de patrones de los troncos y las tortugas cortas.
+D 0x4E02 0x4E21 troncos_largos  Las mismas cuatro listas, pero con un tramo mas de lomo cada una: los troncos largos.
+D 0x5849 0x584F rana_rescatable  La ficha con la que arranca la rana que hay que llevar a casa: la cuenta, el paso, Y = 0xCF -escondida-, X = 0x60, dibujo 0x28 y color 1.
+F 0x5849 6
+D 0x584F 0x585E la_demo  LA DEMO ENTERA, en quince bytes. Uno por movimiento, con el mismo formato que los mandos: 0x01 arriba, 0x08 a la derecha, 0x00 quieta. La lista es 00 08 01 01 01 01 01 08 01 01 01 01 08 00 01, o sea: espera, derecha, cinco veces arriba, derecha, cuatro arriba, derecha, espera y una arriba. El puntero de 0xE049 vuelve aqui al montar cada fase, y como solo se le incrementa el byte bajo, la lista no puede cruzar de pagina.
+F 0x584F 15
+D 0x585E 0x58D1 patrones_de_la_partida  Un bloque con cabecera para 0x4956: 112 bytes a partir del caracter 2.
+D 0x58D1 0x59BB patrones_rotables  Diez juegos de caracteres, separados por un 0x11, que 0x473C sube y despues corre dos bits tres veces mas. De cada uno salen CUATRO versiones en la VRAM, desplazadas 0, 2, 4 y 6 pixeles, y con ellas se mueven los troncos y los coches sin gastar un solo sprite.
+D 0x59BB 0x59FF patrones_rotables_mezclados  Cuatro juegos mas, subidos con el bit 0 de 0xE042 puesto: ademas de correrse, se mezclan con la capa de al lado.
+D 0x59FF 0x5C34 patrones_de_sprite  Veinte bloques con cabecera para 0x4956, todos a la tabla de patrones de sprite. Aqui estan la rana, el cocodrilo, el bicho del rio y la rana que se rescata.
+D 0x5C34 0x5C46 color_de_los_sprites  Otro solape a proposito: el ultimo bloque de sprites llega hasta 0x5C53, y estos dieciocho bytes son ademas las nueve parejas -cuantos, que byte- que 0x43A9 usa para colorear.
+F 0x5C34 2
+D 0x5C46 0x5C7C caracteres_y_su_espejo  Seis grupos de nueve bytes para 0x47DA: un byte de cuantos y ocho de dibujo. Cada uno se sube tal cual y despues del reves, que es como salen los dibujos mirando al otro lado.
+F 0x5C46 9
+D 0x5C7C 0x5C85 caracter_y_su_espejo  Un grupo mas, con el mismo formato.
+F 0x5C7C 9
+
+# ---------------------------------------------------------------------------
+# LAS CUATRO DESCRIPCIONES DE TRAZADO
+# ---------------------------------------------------------------------------
+# Formato de cada una, tal como la lee 0x5462: por cada fila, un byte con la
+# velocidad -con signo- y detras parejas (tipo, posicion) hasta un 0xFF; el bit
+# 7 del tipo marca el ultimo objeto de la fila. Despues del 0xFF va un byte que
+# dice cuanto se avanza en las fichas, para que cada fila caiga en su sitio, y
+# un 0xFF ahi cierra la descripcion entera.
+D 0x5C85 0x5CCD trazado_1  El de las fases 1, 6, 11... Ocho filas: rio con troncos de tres tamanos y tortugas, y carretera con los cuatro tipos de vehiculo. Ninguna fila pasa de cuatro objetos.
+D 0x5CCD 0x5D11 trazado_2_y_3  Lo usan DOS huecos del ciclo, el segundo y el tercero, porque la tabla de 0x5457 apunta aqui dos veces. Las fases 2 y 3 llevan por tanto el mismo trazado; lo unico que las separa son los dos retoques de 0x5493, que en la 3 convierten el primer objeto de la fila de arriba en cocodrilo y le quitan uno a la fila 15.
+D 0x5D11 0x5D55 trazado_4  El de las fases 4, 9, 14... Ya trae un cocodrilo de serie -tipo 0x0D- y la fila 15 va a velocidad -3, la mas rapida de las cuatro descripciones.
+D 0x5D55 0x5D97 trazado_5  El de las fases 5, 10, 15... La fila de arriba se queda con UN SOLO objeto, y es el cocodrilo.
+
+# ---------------------------------------------------------------------------
+# LAS PARTITURAS
+# ---------------------------------------------------------------------------
+# Todas con el mismo formato, el que lee 0x413E: notas de tres bytes -periodo
+# bajo, periodo alto con el volumen en el nibble de arriba y el bit 3 para el
+# ruido, y duracion- y un 0xFF al final. Con la duracion negativa la nota se
+# apaga sola.
+D 0x5D97 0x5DE9 musica_de_arranque_1  27 notas. La melodia con la que empieza la partida, en el canal 1.
+F 0x5D97 3
+D 0x5DE9 0x5E41 musica_de_arranque_2  29 notas, el canal 2 de esa misma melodia.
+F 0x5DE9 3
+D 0x5E41 0x5E99 musica_de_arranque_3  29 notas, el canal 3.
+F 0x5E41 3
+D 0x5E99 0x5EC1 musica_de_la_muerte  13 notas, en el canal 3.
+F 0x5E99 3
+D 0x5EC1 0x5ED4 aviso_de_tiempo  6 notas. Suena una sola vez, cuando al reloj le quedan 0x32; en ese mismo momento el caracter de la barra se pone rojo.
+F 0x5EC1 3
+D 0x5ED4 0x5EDB sonido_de_vida_extra  2 notas.
+F 0x5ED4 3
+D 0x5EDB 0x5EDF tic_del_bonus  Una sola nota, la que suena por cada unidad de tiempo que se cobra al llegar a casa.
+F 0x5EDB 3
+D 0x5EDF 0x5EE6 sonido_de_coger_el_bicho  2 notas.
+F 0x5EDF 3
+D 0x5EE6 0x5EF0 sonido_del_salto  3 notas. La que mas veces suena de todo el cartucho.
+F 0x5EE6 3
+D 0x5EF0 0x5F18 musica_de_la_partida  13 notas en el canal 2. Es la que suena todo el rato mientras se juega: 0x5144 la vuelve a poner cada vez que baja el reloj, pero solo si el canal ya se ha callado, asi que se encadena sola.
+F 0x5EF0 3
+D 0x5F18 0x5F5E musica_de_fase_superada_1  23 notas, canal 1.
+F 0x5F18 3
+D 0x5F5E 0x5FB6 musica_de_fase_superada_2  29 notas, canal 2.
+F 0x5F5E 3
+D 0x5FB6 0x5FD8 musica_del_final_1  11 notas, canal 1.
+F 0x5FB6 3
+D 0x5FD8 0x5FF1 musica_del_final_2  8 notas, canal 2. El programa principal se queda mirando este canal hasta que se calla, y solo entonces vuelve al titulo.
+F 0x5FD8 3
+D 0x5FF1 0x6000 relleno  Los quince bytes que sobran al final del cartucho, todos a 0xFF.
+F 0x5FF1 15
+
+# --- Destinos de salto que quedaban sin bautizar. Ninguno se llama con CALL:
+#     son puntos a los que se entra desde dentro de su propia rutina.
+L 0x42FB MIRA_QUE_TECLA
+L 0x43ED PON_LAS_VIDAS
+L 0x4400 Y_LA_FASE_DE_LOS_DOS
+L 0x44AE RESTA_LOS_TRES_BYTES
+L 0x44F8 COMPARA_CON_EL_ESCALON
+L 0x457C AVISA_DE_QUIEN_JUEGA
+L 0x45AF ROTULOS_DEL_FINAL
+L 0x45D6 BORRA_SEIS_BYTES
+L 0x45F0 BORRA_Y_REARRANCA
+L 0x4692 ENCIENDE_O_APAGA
+L 0x469C APAGALO
+L 0x469D ELIGE_LA_FILA
+L 0x46A9 DOS_CARACTERES
+L 0x46BD SUMA_BCD
+L 0x46D7 UN_TERCIO
+L 0x46E4 FILA_A_FILA
+L 0x4761 UNA_DE_LAS_TRES
+L 0x48EA UN_CARACTER_DEL_LARGO
+L 0x494E FUERA_DE_LA_TIRA
+L 0x4950 GUARDA_Y_SIGUE
+L 0x4EB4 SUENA_EL_SALTO
+L 0x4F42 PON_EL_DIBUJO
+L 0x4F54 AVANZA_EL_BICHO
+L 0x5028 PINTA_LA_CABEZA
+L 0x50A3 MIRA_EL_SENTIDO
+L 0x510F QUITA_EL_BIT_DE_ENCIMA
+L 0x5314 BORRA_LA_BANDERA
+L 0x5332 MIRA_EL_BORDE_IZQUIERDO
+L 0x5338 LA_RANA_TUMBADA
+L 0x5387 CUENTA_EL_BONUS
+L 0x5513 OCHO_TRAMOS
+L 0x5695 A_LA_DERECHA_EMPIEZA
+L 0x56D7 A_LA_IZQUIERDA_EMPIEZA
+L 0x5770 QUE_VERSION_DESPLAZADA
+
+# --- Segunda pasada: el rotador y los generadores de listas de patrones
+C 0x473D copia el juego de patrones a 0xE308 y lo sube tal cual: esa es la version sin desplazar
+C 0x4741 y de ahi salen las otras tres
+C 0x4752 los patrones van de ocho en ocho, sin cabecera
+C 0x4757 el 0x11 cierra el juego; no es un patron, es la marca
+C 0x4761 tres pasadas, y cada una deja el dibujo dos pixeles mas a la derecha
+C 0x4762 0xE300 esta ocho bytes por debajo de 0xE308: ahi cae el caracter de la izquierda
+C 0x4765 un caracter por vuelta, ocho bytes cada uno
+C 0x4767 y dentro, byte a byte
+C 0x476E los dos bits que se salen por la izquierda se guardan en C
+C 0x4772 ocho bytes atras esta la misma linea del caracter anterior
+C 0x4779 y ahi entran los dos bits que salieron
+C 0x4780 el 0x11 otra vez: se acabo el juego de patrones
+C 0x478C ocho bytes, que es un caracter
+C 0x4794 la capa de encima
+C 0x479C las dos capas juntas, con un OR
+C 0x47A3 y su propio 0x11 para cerrarla
+C 0x47A9 esta version ya se puede subir
+C 0x47B8 la capa se borra antes de la siguiente vuelta
+C 0x47CE ocho bytes por caracter
+C 0x47D4 hasta encontrar el 0x11
+C 0x47DB el primer byte de cada grupo dice cuantas veces va
+C 0x47E1 el dibujo tal cual
+C 0x47E8 el mismo contador otra vez, ahora para la copia invertida
+C 0x47EC ocho adelante, para leerlo del reves
+C 0x47F3 los mismos ocho bytes, de atras adelante
+C 0x4803 el primer byte de la pareja es cuantos, y el segundo que byte
+B 0x480E LAS LISTAS DE LOS COCHES. Cada tipo de vehiculo se guarda en RAM como cuatro desplazamientos y cuatro listas de caracteres, una por version desplazada. Los tres tamanos -5, 7 y 9 caracteres- se generan aqui de cero, sin ninguna tabla en el cartucho: los codigos de caracter salen contados.
+C 0x480E el coche corto, cinco caracteres
+C 0x4816 el mediano, siete
+C 0x481E y el largo, nueve
+C 0x4828 los cuatro primeros bytes son los desplazamientos de las cuatro versiones
+C 0x482C con A caracteres, la primera lista ocupa 2A-1+4 bytes
+C 0x4840 el morro, la cola y los A-3 tramos iguales de en medio
+C 0x4845 cuatro versiones
+C 0x4847 los caracteres del coche arrancan en el 0x80, y los de su fila de abajo en el 0x8F
+C 0x484B el morro
+C 0x4851 los tramos de en medio, todos el mismo dibujo
+C 0x4859 el 0x92 se salta: ese codigo esta ocupado
+C 0x485F la cola, y el 0xFF que cierra la lista
+C 0x4865 la siguiente version repite el mismo reparto
+B 0x486D LAS LISTAS DEL RIO. Igual que los coches, pero partiendo de plantillas que si estan en el cartucho: 0x4DDF para los cuatro tramos de tronco y 0x4DEB y 0x4E02 para los troncos y las tortugas, cortos y largos.
+C 0x486D los cuatro tamanos de tronco, de 0x4DDF
+C 0x48A8 y aqui se fabrican las fases de la tortuga hundiendose
+C 0x48AB la de medio hundir: los mismos caracteres, 0x20 mas alla
+C 0x48B4 y con el bit 7 puesto, la del todo sumergida
+C 0x48D7 los cuatro desplazamientos, otra vez
+C 0x48DD el primer caracter y cuanto se avanza de uno al siguiente
+C 0x48E1 cuatro versiones
+C 0x48EA el de arriba
+C 0x48ED y el de abajo, que va C mas alla
+C 0x48F3 cada version empieza dos caracteres despues
+C 0x48F8 el 0xFF cierra la lista
+C 0x4905 y el desplazamiento de la siguiente version se apunta en la cabecera
+C 0x490E los cuatro desplazamientos empiezan en 4, que es donde acaba la cabecera
+C 0x4914 cuatro versiones
+C 0x4918 el 0xFF cierra la plantilla
+C 0x491E la fila de abajo es la de arriba mas catorce
+C 0x4924 y la siguiente version, dos caracteres mas alla
+C 0x4939 la cabecera de cuatro bytes se copia tal cual
+C 0x4947 con el bit 7 en A no se suma nada: se pone el caracter 1, el del agua
+C 0x494B y si no, todos los caracteres se corren A de golpe
+
+# --- Segunda pasada: el montaje de la partida
+C 0x4353 el marcador que se dibuja solo empieza sin nada pendiente
+C 0x435A la pantalla entera a cero antes de cargar nada
+C 0x435D los caracteres de la partida
+C 0x4365 VRAM 0x2080: los patrones, a partir del caracter 0x10
+C 0x436B diez juegos de patrones, cada uno con sus cuatro versiones desplazadas
+C 0x4378 VRAM 0x24F0, el caracter 0x9E
+C 0x4381 estos dos van mezclando dos capas, por el bit 0 de 0xE042
+C 0x4386 y los otros dos en el 0xBE
+C 0x4391 los veinte bloques de patrones de sprite
+C 0x4399 VRAM 0x19C0: 32 bytes a 0xFF, un sprite macizo
+C 0x43A3 y ahora la tabla de color, desde el caracter 0
+C 0x43B1 desde el 0x10
+C 0x43BF y el color de los caracteres del 0xBE
+C 0x43D6 lo mismo con los patrones
+C 0x43DF las listas de los coches
+C 0x43E2 y las del rio
+C 0x43F3 las dos partidas empiezan en la fase 1
+C 0x43FB la del jugador 2
+C 0x4403 los rotulos fijos del marcador
+C 0x4409 y el aviso de que juega el primero
+C 0x440F el record, que sobrevive a la partida anterior
+C 0x4462 a partir de aqui la interrupcion ya mueve cosas
+C 0x4467 con un solo jugador se borran los rotulos del segundo
+C 0x4480 las vidas que quedan, dibujadas una a una en el lateral
+C 0x4489 primero se borran las siete casillas
+C 0x449A y luego se pintan las que hay
+C 0x44AE tres bytes, del mas bajo al mas alto
+C 0x44BC y si lo paso, los puntos pasan a ser el record
+C 0x44E0 el jugador 2 tiene sus puntos catorce bytes mas alla
+C 0x4500 el escalon del que juega
+C 0x4516 en la demo, cualquier tecla la corta
+C 0x4522 y se borran los puntos de los dos jugadores
+C 0x452A mientras quede vida, se sigue
+C 0x4555 una vida menos
+C 0x45D6 los seis bytes de puntos de los dos jugadores
+C 0x45F1 y se vuelve al arranque, sin pasar por INIT
+
+# --- Segunda pasada: el marcador y la aritmetica BCD
+C 0x4656 dos cifras por byte, la de arriba primero
+C 0x465A el nibble de arriba
+C 0x4664 y el de abajo
+C 0x466D el jugador que juega, 0 o 1
+C 0x4671 se apunta cual era antes de cambiarlo
+C 0x4677 y se mira si al otro le quedan vidas
+C 0x46BD las unidades y las decenas
+C 0x46C1 los millares y las centenas
+C 0x46C6 sin acarreo ya esta
+C 0x46C8 y si lo hay, sube el byte de arriba
+C 0x46D4 la tabla de nombres son tres tandas de 256
+
+# --- Segunda pasada: el bicho del rio y la rana que se rescata
+C 0x4EF8 la posicion del carril de arriba del todo
+C 0x4EFC antes de 0x24 no ha entrado aun
+C 0x4F00 y a partir de 0x28 ya esta dentro
+C 0x4F09 sale una sola vez por pasada
+C 0x4F0B bit 5: hay bicho en pantalla
+C 0x4F11 la cuenta de lo que dura
+C 0x4F17 dibujo 0x38
+C 0x4F1A la X sale de la posicion del carril
+C 0x4F1F color 0x20 y once de cuenta
+C 0x4F27 se pinta en el sprite 0
+C 0x4F32 cuando la cuenta llega a cero, se da la vuelta
+C 0x4F36 y a mitad de camino cambia de dibujo
+C 0x4F42 el dibujo nuevo, segun hacia donde vaya
+C 0x4F4B ocho pixeles por paso
+C 0x4F54 y se mueve
+C 0x4F73 vuelve al dibujo de entrada
+C 0x4F7F ocho pixeles hacia atras
+C 0x4F82 cuatro pasos antes de girar
+C 0x5077 color 0x58
+C 0x50A3 con el dibujo mirando a un lado no se cambia de sentido
+C 0x50B0 cuatro pixeles por paso
+C 0x50CF por el borde de la izquierda, igual pero al reves
+C 0x50D7 se para y arranca hacia el otro lado
+
+# --- Segunda pasada: los choques
+C 0x518A las diecisiete fichas, de cuatro en cuatro
+C 0x5192 la caja del bicho del rio
+C 0x5198 y la de la rana, que esta en 0xE282
+C 0x51AF y la rana que se rescata deja de estar cogida
+C 0x51B7 el bicho desaparece de la pantalla
+C 0x51C1 la rana cambia de dibujo: ya lleva algo
+C 0x51CC la caja de la rana que se rescata
+C 0x51DD con esta no se muere: solo cuenta si se coge
+C 0x522B el segundo byte de la ficha es la posicion
+C 0x522E la caja de la rana
+C 0x5237 la posicion del carril esta en otra escala
+C 0x5240 y se compara con la caja del objeto
+C 0x5249 no ha chocado con este: al siguiente, cuatro bytes mas alla
+C 0x5250 el nibble de abajo es el tipo
+C 0x5257 la X de la rana
+C 0x5264 la caja de la cabeza del cocodrilo, tres bytes por debajo
+
+# --- Segunda pasada: lo que quedaba por debajo del diez por ciento
+C 0x41F7 registros 8, 9 y 10 del PSG: los tres volumenes
+C 0x4290 se borra el rastro que dejo la rana al subir
+C 0x4296 tres tandas de 256 bytes de la tabla de nombres
+C 0x42A5 y la rana en su sitio nuevo
+C 0x42B8 al cabo de 0x71 fotogramas se deja de esperar
+C 0x4331 los dos bytes de destino de la lista
+C 0x4336 26 caracteres, todos a cero: la linea se apaga
+C 0x4341 y al otro medio segundo se vuelve a pintar
+C 0x4720 se lee de una direccion y se escribe en otra, byte a byte
+C 0x4724 el byte leido no cabe en ningun registro libre
+C 0x472D 4095 vueltas
+C 0x4933 y se apunta donde empieza la version siguiente
+C 0x4952 caracter a caracter hasta el 0xFF
+C 0x4969 caracteres consecutivos, que es como se guardan los rotulos anchos
+C 0x496F y al acabar la fila se baja una: 32 caracteres
+C 0x4980 con acarreo, el byte alto tambien sube
+C 0x4E70 dieciseis pixeles, una fila entera
+C 0x4E7B dibujo 0x10: la rana mirando abajo
+C 0x4E81 y una fila menos en la cuenta de lo alcanzado
+C 0x4E9C ocho pixeles, media casilla
+C 0x4EA1 dibujo 0x24: mirando a la derecha
+C 0x5036 una ficha de sprite, cuatro bytes
+C 0x503D ocho atras en el origen
+C 0x5041 y cuatro adelante en el destino: el trozo siguiente
+C 0x50FE una unidad de tiempo cada veinte fotogramas
+C 0x5314 la fase deja de estar montada, para que se vuelva a montar
+C 0x5316 pero los carriles siguen moviendose mientras se muere
+C 0x53B7 la X de la rana, que es donde se queda lo que traia
+C 0x53BB Y = 1: la fila de arriba del todo
+C 0x53C8 en el sprite 28, que no lo usa nadie mas
+C 0x53D9 y se recoge en cuanto acaba el bonus
+C 0x53E3 cuantas casas lleva
+C 0x53EE se vacian las cinco para la fase siguiente
+C 0x5405 el numero que se ve en el marcador
+C 0x54D1 dos fichas mas en la fila de arriba
+C 0x54D6 y la primera tortuga de la fila 9 empieza a hundirse tambien: es la TERCERA
+C 0x54E7 el cocodrilo, que es fijo en todas las fases
+C 0x54EF y la rana que se rescata
+C 0x5552 cinco casas, cuatro caracteres cada una
+C 0x5558 y van seguidas, sin volver a fijar la direccion
+C 0x5580 cuatro caracteres hasta la casa siguiente
+C 0x5587 0xE040 a cero: la fase ya esta montada
+C 0x561D la fila 3, la de arriba del rio
+C 0x562B la fila 5
+C 0x563C y la fila 7
+C 0x5651 la fila 9, la ultima del rio
+C 0x5662 la fila 13, la primera de asfalto
+C 0x5673 y la fila 15
+C 0x5725 con el bit 7 se acaba la fila
+C 0x572C y si no, cuatro bytes mas alla esta la siguiente ficha
+C 0x578B el caracter de arriba
+C 0x578E y cuarenta mas alla el de abajo
+C 0x5795 el 0xFF cierra la lista del objeto
+C 0x57BA la X de la rana que se rescata
+C 0x57D1 22 caracteres de la fila de arriba
+C 0x57DC y los 22 de la de abajo, 32 mas alla en la VRAM
+C 0x580C se avanza aunque el byte sea el 0xFF: hay que quedarse DETRAS de el
+
+# --- Segunda pasada, ultima tanda: las rutinas cortas que quedaban
+C 0x4167 el nibble de arriba del segundo byte de la nota
+C 0x4173 y el tercero es cuanto dura
+C 0x4175 se apunta el volumen de arranque, para ir bajandolo
+C 0x412F un escalon menos
+C 0x4131 con el volumen a cero ya no hay nada que hacer
+C 0x4136 se escribe en el PSG
+C 0x413A y se marca que esta nota se apaga sola
+C 0x4043 el bit 0 de la fila 8 es el espacio, que hace de primer boton
+C 0x404D fila 7 del teclado
+C 0x4050 y el bit 6 de la fila 7 -la tecla SELECT- del segundo
+C 0x4632 caracter a caracter
+C 0x4638 detras del 0x1F van cuantos y cual
+C 0x47F5 se escribe leyendo hacia atras: eso es lo que da la vuelta al dibujo
+C 0x4929 el 0xFF que cierra tambien se copia
+C 0x492D cuatro versiones y se acabo
+C 0x4957 los dos primeros bytes son la direccion de VRAM, el ALTO delante
+C 0x495B el tercero es cuantos van, y un cero significa 256
+C 0x495D y detras, los datos
+C 0x4961 el bloque siguiente empieza donde acabo este
+C 0x44E5 el escalon del jugador que juega
+C 0x44F0 el del segundo esta catorce bytes mas alla
+C 0x51D7 tipo 3, la misma caja que el bicho
+C 0x51D9 con acarreo esta cogida, y se sale sin mirar nada mas
+C 0x4FCE por la derecha, de 0xE0 en adelante ya se sale
+C 0x4FD3 el primer trozo se recoge
+C 0x4FD8 y el tercero tambien
+C 0x421C los registros van del 0x80 al 0x87: el bit 7 dice que es registro y no VRAM
+C 0x4222 el siguiente valor y el siguiente registro
+C 0x4229 la pantalla de titulo se carga con la interrupcion ya en marcha
+C 0x422D doce bloques de caracteres, cada uno con su cabecera
+C 0x4238 256 bytes: el 0 del tamano significa la tanda entera
+C 0x4243 y 72 mas
+C 0x424B VRAM 0x0008: la tabla de color, desde el caracter 1
+C 0x425F cuatro tandas mas, siguiendo la misma lista
+C 0x4276 con la presentacion ya vista, se va derecho al titulo
+
+# --- El juego de letras, subido dos veces
+B 0x4235 EL MISMO JUEGO DE LETRAS, DOS VECES. Los doce bloques de 0x4B36 dejan las letras en los caracteres 0xD8 en adelante, y aqui los MISMOS bytes -0x4B39 y 0x4C34, que caen dentro del primer bloque- se suben otra vez a los caracteres 0x98 y 0xB7. No es un descuido: la tabla de color que se carga justo despues da 0x70 -cian- a los caracteres del 0x80 al 0xBF y 0xF0 -blanco- del 0xC0 al 0xFF. En SCREEN 2 el color va por linea de patron y no por casilla, asi que la unica forma de tener las mismas letras en dos colores es tenerlas dos veces. Las del menu salen en cian y las del marcador en blanco.
+C 0x4235 los mismos bytes del bloque anterior, ahora al caracter 0x98
+C 0x4240 y estos al 0xB7

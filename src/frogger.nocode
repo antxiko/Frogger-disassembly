@@ -1,0 +1,11 @@
+# Zonas que el trazador NO debe leer como codigo: las tablas de palabras que
+# van INCRUSTADAS DETRAS del `call 0x57FF`.
+#
+# 0x57FF no es un despachador que salte: coge la direccion de retorno como base
+# de una tabla, devuelve en BC la palabra numero A, avanza hasta el 0xFF que
+# cierra la tabla y hace `ret` a lo que hay detras. Asi que los bytes entre el
+# call y el 0xFF son datos, y el codigo sigue despues.
+0x51F8 0x5202   5 palabras + 0xFF (call 0x57FF en 0x51F5); sigue en 0x5203
+0x520F 0x5217   4 palabras + 0xFF (call 0x57FF en 0x520C); sigue en 0x5218
+0x5457 0x5461   5 palabras + 0xFF (call 0x57FF en 0x5454); sigue en 0x5462
+0x5748 0x5764  14 palabras + 0xFF (call 0x57FF en 0x5745); sigue en 0x5765

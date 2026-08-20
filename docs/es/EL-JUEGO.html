@@ -1,0 +1,107 @@
+<title>El juego — Time Pilot</title>
+<style>
+:root{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;--linea:#23262e;
+  --rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+@media (prefers-color-scheme:light){:root{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;
+  --panel:#f7f6f2;--linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}}
+:root[data-theme="dark"]{--tinta:#cfd0d4;--suave:#83868f;--fondo:#000;--panel:#0c0e13;
+  --linea:#23262e;--rojo:#ff897d;--cyan:#65dbef;--verde:#3eb849;--oro:#ded087}
+:root[data-theme="light"]{--tinta:#191a1e;--suave:#5a5d66;--fondo:#e9e7e1;--panel:#f7f6f2;
+  --linea:#d0cdc5;--rojo:#b23f34;--cyan:#1c6b7c;--verde:#2b7734;--oro:#8a7420}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);padding:0 1.25rem 6rem;
+  font:15px/1.7 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.w{max-width:1120px;margin:0 auto}
+.n{max-width:68ch}
+h1,h2,h3,h4{font-weight:400;text-wrap:balance}
+a{color:var(--cyan)}
+img{image-rendering:pixelated;max-width:100%;height:auto;display:block}
+header.top{display:flex;flex-direction:column;align-items:center;gap:1.5rem;
+  padding:4rem 0 2rem;text-align:center}
+header.top img{width:min(100%,642px)}
+.claim{max-width:60ch;color:var(--suave);font-size:1.05rem}
+.claim b{color:var(--tinta);font-weight:400}
+.ficha{display:flex;flex-wrap:wrap;justify-content:center;gap:0 1.5rem;width:100%;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);
+  border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);padding:.85rem 0}
+.ficha b{color:var(--rojo);font-weight:400}
+nav{display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:center;padding:1.25rem 0;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+nav a{color:var(--suave);text-decoration:none;border-bottom:1px solid transparent}
+nav a:hover,nav a:focus{color:var(--tinta);border-bottom-color:var(--rojo)}
+nav.docs{border-top:1px solid var(--linea);border-bottom:1px solid var(--linea);
+  margin-bottom:1rem}
+section{margin-top:4.5rem;scroll-margin-top:1rem}
+section>h2{font-size:1rem;letter-spacing:.1em;text-transform:uppercase;
+  border-left:3px solid var(--rojo);padding-left:.9rem;margin:0 0 1.5rem}
+.cifras{display:grid;gap:1px;background:var(--linea);border:1px solid var(--linea);
+  grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.cifra{background:var(--panel);padding:1.1rem}
+.cifra b{display:block;font-size:1.7rem;color:var(--oro);font-weight:400;
+  font-variant-numeric:tabular-nums;line-height:1.2}
+.cifra span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--suave)}
+.hall{border-top:1px solid var(--linea);padding-top:1.75rem;margin-top:2.5rem}
+.hall:first-of-type{border-top:0;padding-top:0;margin-top:0}
+.hall h3{margin:0 0 .75rem;font-size:1.15rem;color:var(--rojo)}
+.hall h4{color:var(--oro);margin:1.5rem 0 .5rem;font-size:.95rem}
+.hall p{margin:0 0 1rem}
+pre.asm{background:var(--panel);border-left:2px solid var(--verde);margin:1.25rem 0;
+  padding:1rem 1.1rem;overflow-x:auto;font-size:13px;line-height:1.6;color:var(--tinta)}
+.par{display:grid;gap:1.25rem;grid-template-columns:1fr}
+@media(min-width:820px){.par{grid-template-columns:1fr 1fr}}
+.par figure{margin:0}
+table{border-collapse:collapse;width:100%;margin:1.25rem 0;font-size:13px;display:block;
+  overflow-x:auto}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--linea)}
+th{color:var(--suave);font-weight:400;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+td.num{font-variant-numeric:tabular-nums;color:var(--oro)}
+.nivel{margin-top:2rem}
+.nivel h3{margin:0 0 .9rem;font-size:.95rem;letter-spacing:.06em;text-transform:uppercase}
+.nivel em{color:var(--cyan);font-style:normal}
+.sep{color:var(--suave);margin:0 .6rem}
+.rejilla{display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}
+.rejilla figure{margin:0;background:var(--panel);box-shadow:0 0 0 1px var(--linea)}
+.rejilla figcaption{display:flex;justify-content:space-between;padding:.45rem .65rem;
+  font-size:11px;color:var(--suave);border-top:1px solid var(--linea)}
+.dir{font-variant-numeric:tabular-nums;color:var(--verde)}
+footer{margin-top:5rem;padding-top:1.5rem;border-top:1px solid var(--linea);
+  color:var(--suave);font-size:12px}
+
+/* Aviso de trabajo en curso: tiene que verse antes que las cifras, porque un
+   100% mal leido hace mas dano que no ponerlo. */
+.aviso{background:#3a2a10;border-left:3px solid var(--oro);margin:1.5rem auto;
+  padding:1rem 1.2rem;max-width:900px;border-radius:4px}
+.aviso p{margin:0;color:var(--tinta);font-size:15px;line-height:1.65}
+.galeria{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:1.5rem;margin:1.5rem 0}
+.galeria figure{margin:0}
+.galeria img{width:100%;height:auto;image-rendering:pixelated;
+  border:1px solid var(--linea);border-radius:3px}
+.galeria figcaption{color:var(--suave);font-size:13px;margin-top:.5rem}
+audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
+</style>
+<div class="w"><nav class="top"><a href="index.html">Portada</a><a href="EMPEZAR.html">Empezar</a><a href="EL-JUEGO.html" style=color:var(--tinta)>El juego</a><a href="EL-CARTUCHO.html">El cartucho</a><a href="EL-CODIGO.html">El código</a><a href="HALLAZGOS.html">Hallazgos</a><a href="PREGUNTAS-ABIERTAS.html">Preguntas abiertas</a><a href="../THE-GAME.html" style="margin-left:auto;color:var(--oro)">English</a></nav>
+<h1 id="el-juego">El juego</h1>
+<p>Una rana cruza una carretera y un río para llegar a cinco casas. Es el recreativo de 1981, reducido a ocho kilobytes.</p>
+<h2 id="la-pantalla-de-titulo">La pantalla de título</h2>
+<p>Se monta con listas de rótulos (0x4A04 y cuatro más), y espera una de cuatro teclas:</p>
+<table><tr><th>tecla</th><th>jugadores</th><th>mando</th></tr><tr><td><b>1</b></td><td>uno</td><td>joystick</td></tr><tr><td><b>2</b></td><td>dos</td><td>joystick</td></tr><tr><td><b>3</b></td><td>uno</td><td>teclado</td></tr><tr><td><b>4</b></td><td>dos</td><td>teclado</td></tr></table>
+<p>En 0xE007 se guarda cuál: con 1 se lee el registro 14 del PSG (el joystick) y con 0 la fila 8 del teclado (los cursores, traducidos por la tabla de 0x49B7).</p>
+<p>Antes del título, y solo la primera vez, hay una presentación corta: una rana que sube la pantalla de fila en fila, de la 20 a la 3 (0x427F). Cualquiera de las cuatro teclas la corta.</p>
+<h2 id="la-pantalla">La pantalla</h2>
+<p>El terreno de juego ocupa <b>22 columnas</b>, de la 2 a la 23; el resto es el marcador del lateral derecho, desde la columna 25.</p>
+<table><tr><th>filas</th><th></th></tr><tr><td>0</td><td>las cinco casas, cuatro caracteres cada una, en las columnas 4, 8, 12, 16 y 20</td></tr><tr><td>1–2</td><td>el borde de debajo</td></tr><tr><td>3, 5, 7, 9</td><td>el río: troncos, tortugas y el cocodrilo</td></tr><tr><td>11–12</td><td>la mediana, un solo carácter repetido 22 veces</td></tr><tr><td>13, 15, 17, 19</td><td>la carretera: cuatro tipos de vehículo</td></tr><tr><td>21–23</td><td>la orilla de la que sale la rana</td></tr></table>
+<h2 id="la-rana">La rana</h2>
+<p>Arriba y abajo mueven <b>16 píxeles</b>, una fila entera. Los lados solo <b>8</b>, media casilla. Cada salto cambia el dibujo: 0x04 mirando arriba, 0x10 abajo, 0x1C a la izquierda y 0x24 a la derecha.</p>
+<p>La rana son <b>dos sprites</b>. Mientras dura el salto, el segundo se queda plantado en la casilla de la que salió.</p>
+<p><b>Diez puntos</b> por cada salto hacia adelante (<code>ld bc,0x0010</code>, en BCD). Los saltos hacia atrás no dan nada.</p>
+<h2 id="las-casas">Las casas</h2>
+<p>Cada una de las cinco tiene su bit en 0xE080. Caer en una que <b>ya está ocupada</b> no es un rebote ni un aviso: 0x528F lee el bit y, si estaba puesto, salta derecho a la rutina de la muerte.</p>
+<p>Llenar las cinco acaba la fase. Lo que quede de tiempo se cobra a <b>diez puntos la unidad</b>, una cada dos fotogramas.</p>
+<h2 id="el-reloj">El reloj</h2>
+<p>El tiempo arranca en 150 (0x96 en BCD) y baja uno cada 20 fotogramas. Que se acabe mata a la rana.</p>
+<p>Por el camino pasan dos cosas que no se ven jugando: a los <b>0x60</b> cuatro objetos de la fila 15 se hacen más rápidos, una sola vez por fase; y a los <b>0x32</b> el carácter con el que está dibujada la barra del tiempo cambia de color.</p>
+<h2 id="vidas-y-vida-extra">Vidas y vida extra</h2>
+<p>Tres vidas. El escalón de la vida extra está en 0xE005 y se compara con el <b>byte alto</b> de los puntos, que son las decenas de millar: arranca en 1 y sube de 5 en 5, así que la primera vida extra llega a los <b>10.000</b> y las demás cada <b>50.000</b>.</p>
+<p>Nunca se dibujan más de siete vidas, haya las que haya.</p>
+<footer><p><em>Time Pilot</em> lo publico Konami para MSX; su numero de catalogo es RC-703 y el propio cartucho firma <b>&copy;KONAMI 1983</b>, dos veces y con su propia fuente: bajo el titulo y al pie del marcador. No hay creditos ni iniciales en ninguna parte del binario. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion.</p></footer></div>
