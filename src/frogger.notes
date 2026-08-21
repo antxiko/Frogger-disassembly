@@ -49,7 +49,7 @@
 #   E048 ya se ha visto la presentacion de la rana subiendo
 #   E049/E04A puntero a la lista de la demo, con el byte ALTO delante; solo se
 #        incrementa el bajo, asi que la lista no puede cruzar de pagina
-#   E052 el tiempo que queda, en BCD; arranca en 0x96 = 150
+#   E052 el tiempo que queda, en BCD; arranca en 0x96, que en BCD son 96
 #   E053 cuenta 20 fotogramas por cada unidad de tiempo
 #   E054 cuenta 4 unidades de tiempo por cada paso de la barra
 #   E055-E05C la barra de tiempo, un caracter por tramo (solo se dibujan 6)
@@ -244,7 +244,7 @@ L 0x45BA ESPERA_A_QUE_ACABE
 C 0x45BA se espera a que el propio canal 2 se apague
 L 0x45D0 BORRA_LOS_MARCADORES
 L 0x45DD VUELTA_AL_TITULO
-C 0x45DD borra de 0xE040 a 0xE09F: fase, casas y puntos de los dos jugadores
+C 0x45DD borra de 0xE040 a 0xE0A0 -97 bytes, que BORRA_BC_BYTES borra BC+1-: fase, casas y puntos de los dos jugadores
 
 # ---------------------------------------------------------------------------
 # LOS MANDOS, LOS ROTULOS Y EL MARCADOR
@@ -410,7 +410,7 @@ L 0x5004 MIRA_EL_CUARTO
 L 0x5012 PINTA_LOS_CUATRO
 L 0x5020 PINTA_PARTIDO
 L 0x5036 TROZO_A_TROZO
-L 0x504C COLOREA_EL_COCODRILO
+L 0x504C X_DE_LOS_TROZOS_DEL_COCODRILO No colorea nada: reparte la X de los tres trozos de atras. Los colores los deja el LDIR de 0x54E4
 L 0x505B TRES_TROZOS
 B 0x5063 LA RANA QUE SE RESCATA. La que aparece en un tronco y hay que llevar a casa. NO sale hasta la fase 3: `cp 003h / ret c` lo corta antes. El dibujo se elige con el registro R del refresco de la memoria, asi que sale uno u otro sin ninguna tabla de azar.
 L 0x5063 LA_RANA_RESCATABLE
@@ -429,7 +429,7 @@ B 0x50E7 PIDE UN SONIDO EN EL CANAL 3. Solo entra si el canal esta libre o si la
 L 0x50E7 PIDE_SONIDO
 C 0x50ED la prioridad de un efecto es su direccion: gana la mas baja
 L 0x50F7 PON_EL_SONIDO
-B 0x50FB EL RELOJ DE LA PARTIDA. El tiempo arranca en 0x96 -150 en BCD- y baja uno cada 20 fotogramas. Al llegar a cero la rana muere. Por el camino pasan dos cosas que no se ven jugando: a los 0x60 cuatro objetos de la fila 15 se hacen mas rapidos, y a los 0x32 el caracter de la barra cambia de color.
+B 0x50FB EL RELOJ DE LA PARTIDA. El tiempo arranca en 0x96 y baja uno cada 20 fotogramas. La cuenta va en BCD -0x5104 resta con `add a,099h / daa` y los avisos se comparan con `cp 060h` y `cp 032h`-, asi que 0x96 son NOVENTA Y SEIS unidades, no 150: 32 segundos a 60 Hz. Al llegar a cero la rana muere. Por el camino pasan dos cosas que no se ven jugando: a los 0x60 cuatro objetos de la fila 15 se hacen mas rapidos, y a los 0x32 el caracter de la barra cambia de color.
 L 0x50FB EL_RELOJ
 C 0x5100 veinte fotogramas por unidad de tiempo
 C 0x5104 restar uno en BCD es sumar 0x99 y ajustar
@@ -582,7 +582,7 @@ L 0x54DF DESDE_LA_FASE_11
 L 0x54E4 COPIA_LAS_FICHAS_FIJAS
 C 0x54FA la lista de la demo vuelve al principio en cada fase
 L 0x5503 PON_EL_TIEMPO
-C 0x5506 el tiempo arranca en 150
+C 0x5506 el tiempo arranca en 0x96, y como toda la cuenta va en BCD eso son NOVENTA Y SEIS unidades, no 150: a 20 fotogramas por unidad son 32 s a 60 Hz
 C 0x550B veinte fotogramas por unidad
 C 0x5513 los ocho tramos de la barra, todos al dibujo 5
 C 0x551B la barra empieza azul; a los 0x32 se pondra roja
@@ -960,7 +960,7 @@ C 0x4F54 y se mueve
 C 0x4F73 vuelve al dibujo de entrada
 C 0x4F7F ocho pixeles hacia atras
 C 0x4F82 cuatro pasos antes de girar
-C 0x5077 color 0x58
+C 0x5077 (iy+003h) es la Y del sprite, no su color: el LDIR de 0x54EF la habia dejado en 0xCF, que la esconde, y 0x58 la saca a la pantalla
 C 0x50A3 con el dibujo mirando a un lado no se cambia de sentido
 C 0x50B0 cuatro pixeles por paso
 C 0x50CF por el borde de la izquierda, igual pero al reves
@@ -1010,7 +1010,7 @@ C 0x5036 una ficha de sprite, cuatro bytes
 C 0x503D ocho atras en el origen
 C 0x5041 y cuatro adelante en el destino: el trozo siguiente
 C 0x50FE una unidad de tiempo cada veinte fotogramas
-C 0x5314 la fase deja de estar montada, para que se vuelva a montar
+C 0x5314 la unica bandera que vive en este byte es el bit 1 que pone 0x5129: los cuatro objetos de la fila 15 ya han acelerado en esta fase
 C 0x5316 pero los carriles siguen moviendose mientras se muere
 C 0x53B7 la X de la rana, que es donde se queda lo que traia
 C 0x53BB Y = 1: la fila de arriba del todo
@@ -1084,3 +1084,70 @@ C 0x4276 con la presentacion ya vista, se va derecho al titulo
 B 0x4235 EL MISMO JUEGO DE LETRAS, DOS VECES. Los doce bloques de 0x4B36 dejan las letras en los caracteres 0xD8 en adelante, y aqui los MISMOS bytes -0x4B39 y 0x4C34, que caen dentro del primer bloque- se suben otra vez a los caracteres 0x98 y 0xB7. No es un descuido: la tabla de color que se carga justo despues da 0x70 -cian- a los caracteres del 0x80 al 0xBF y 0xF0 -blanco- del 0xC0 al 0xFF. En SCREEN 2 el color va por linea de patron y no por casilla, asi que la unica forma de tener las mismas letras en dos colores es tenerlas dos veces. Las del menu salen en cian y las del marcador en blanco.
 C 0x4235 los mismos bytes del bloque anterior, ahora al caracter 0x98
 C 0x4240 y estos al 0xB7
+
+# --- Tercera pasada: las rutinas cortas que se quedaron sin explicar
+# El reproductor de sonido y la salida de la interrupcion
+C 0x40EA la ficha del canal 1 empieza en 0xE020, y PASO_DE_CANAL entra apuntando a su byte +1
+C 0x40F0 el canal 2, ocho bytes mas alla
+C 0x40F6 y el canal 3; de aqui se cae en la cuenta de fotogramas, sin salto
+C 0x410A se devuelven los cuatro pares que apilo 0x4012, en el orden contrario
+C 0x410E se sale con las interrupciones ya abiertas; el `reti` hace aqui de `ret`, porque al gancho se entra con un `call` de la BIOS
+C 0x4189 la nota ocupaba tres bytes, asi que DE queda ya sobre la siguiente
+C 0x418B el puntero del programa vuelve a la ficha: el byte alto en +1 y el bajo en +0
+C 0x418E y HL se deja en la ficha+2, que es la que descuenta 0x4190
+C 0x41AA aqui HL viene apuntando a la ficha+5, la cuenta de la nota que se apaga sola
+C 0x41AB con tres pasos o menos por delante se cae en 0x412F y el volumen baja un escalon; por encima, la nota se sostiene
+C 0x41AF de la ficha+5 de vuelta a la +2 para que 0x4190 la descuente
+
+# El reparto de las vidas y el 1UP que parpadea
+C 0x4445 en la demo no hay mando que elegir, asi que 0x4451 se salta entero
+C 0x444C y la demo se juega siempre como si fuera un jugador, valga lo que valga 0xE000
+C 0x456C la interrupcion se corta mientras se borra el area de juego
+C 0x4571 0x4ABA avisa de que juega el primero y 0x4AD2 de que juega el segundo
+C 0x4574 0xE001 ya lo cambio 0x4563: el aviso es del que entra, no del que acaba de perder la vida
+C 0x4692 0xE017 alterna entre 0 y 1 en cada parpadeo: es el estado del rotulo
+C 0x4697 tocaba borrarlo, asi que se cogen los dos ceros de 0x4ADA en vez del 1UP
+
+# El rotador de patrones
+C 0x47BF se recupera la cuenta de 0x4761: quedan las versiones de 4 y de 6 pixeles
+C 0x47C2 hechas las tres, el andamio de 0xE300 se deja a cero; 0x480E y 0x486D vuelven a usar esa misma RAM para las listas de patrones
+
+# El cocodrilo y la rana que se rescata
+C 0x504C el juego de registros alternativo, que HL, DE y B llevan ya preparado el volcado a la VRAM
+C 0x504D -4 bytes: las fichas de sprite se recorren hacia atras
+C 0x5052 (ix+001h) es la posicion del carril, y 0x50E0 la pasa a la X en pixeles del trozo de mas a la izquierda
+C 0x5058 0xE2BF es la X del cuarto sprite del cocodrilo: la ficha es Y, X, dibujo y color, y los colores los deja el LDIR de 0x54E4
+C 0x505B se escribe la X, del cuarto trozo al segundo
+C 0x505D dieciseis pixeles de uno a otro, que es lo que mide un sprite
+C 0x5061 la cabeza queda fuera de la cuenta: su X la tocan 0x4FD6 y 0x500C
+C 0x50BD (iy+004h) es 0xE2A4, la X de la rana que se rescata
+C 0x50C0 C vale +4 o -4 segun el dibujo que lleve puesto
+C 0x50C4 los cuatro bytes de 0xE2A3 se suben al sprite 7, en VRAM 0x3B1C
+
+# El reloj: lo que pasa al agotarse y la musica que se encadena
+C 0x510F bit 4: el objeto lleva la rana encima. Se quita de las diecisiete fichas antes de matarla, para que ninguna siga tirando de ella
+C 0x5111 cuatro bytes de una ficha a la siguiente
+C 0x5117 y a morir por el mismo camino que un choque
+C 0x513B se guarda el tiempo, que 0x514B lo necesita otra vez
+C 0x513C el acarreo sigue siendo el de 0x511A: por encima de 0x60 no se pide musica
+C 0x513E solo se recarga el canal 2 si ya se habia callado, y asi la partitura se encadena sola
+C 0x5144 0x5EF0 no arranca hasta que el tiempo baja de 0x60
+
+# La muerte
+C 0x5305 0xE040 bit 0: desde el fotograma siguiente la interrupcion entra por 0x40BC
+C 0x530A 0xE083 es la bandera de fase del jugador 1 y 0xE08B la del 2
+C 0x5310 y esta al reves: con Z juega el primero y aun asi se coge 0xE08B. Comparese con 0x5406, que para lo mismo pasa por FICHA_DEL_QUE_JUEGA
+C 0x535C HL viene de 0x534B con 0xE018, la espera que le queda a la muerte
+C 0x535D su bit 0 cambia cada 32 fotogramas, asi que la rana muerta parpadea
+C 0x535F color 0, que en un sprite es transparente
+C 0x5364 y el 0x0A con el que sale de 0x558C
+C 0x5576 los cinco bits de 0xE080 van saliendo por el acarreo, empezando por la casa de la izquierda
+C 0x557C 0x52E2 acaba dejando 0xE040 a 4, y por eso 0x5587 lo tiene que volver a poner a cero
+
+# Los dos ayudantes del final del cartucho
+C 0x57EF DE queda en HL+1: el LDIR se copia sobre si mismo y va propagando el cero
+C 0x57F4 se borran BC+1 bytes, no BC; el primero lo pone el `ld (hl),000h` de arriba
+C 0x582C 0xA0 es el puerto donde se dice que registro del PSG se va a tocar
+C 0x582E el outi saca el numero de registro y deja HL en el valor
+C 0x5830 0xA1 es el puerto del dato
+C 0x5836 BC vuelve como estaba: 0x581C lo guardo porque el outi se come B

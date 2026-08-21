@@ -59,8 +59,10 @@ Filling all five ends the stage. Whatever is left on the clock is cashed in at
 
 ## The clock
 
-The time starts at 150 (0x96 in BCD) and drops by one every 20 frames. Running
-out kills the frog.
+The time starts at 0x96 and drops by one every 20 frames. The whole count is
+BCD —0x5104 subtracts with `add a,099h / daa`, and the thresholds are compared
+as `cp 060h` and `cp 032h`— so that 0x96 is **ninety-six** units, not 150: at 20
+frames each, 32 seconds on a 60 Hz machine. Running out kills the frog.
 
 Two things happen along the way that are easy to miss: at **0x60** four objects
 in row 15 speed up, once per stage; and at **0x32** the character the time bar

@@ -59,7 +59,10 @@ la unidad**, una cada dos fotogramas.
 
 ## El reloj
 
-El tiempo arranca en 150 (0x96 en BCD) y baja uno cada 20 fotogramas. Que se
+El tiempo arranca en 0x96 y baja uno cada 20 fotogramas. La cuenta entera va en
+BCD —0x5104 resta con `add a,099h / daa`, y los avisos se comparan con
+`cp 060h` y `cp 032h`—, así que ese 0x96 son **noventa y seis** unidades, no
+150: a 20 fotogramas cada una, 32 segundos en una máquina de 60 Hz. Que se
 acabe mata a la rana.
 
 Por el camino pasan dos cosas que no se ven jugando: a los **0x60** cuatro

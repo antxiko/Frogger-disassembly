@@ -99,7 +99,7 @@ audio{display:block;width:100%;max-width:640px;margin:.75rem 0 1.5rem}
 <p>Each of the five has its own bit in 0xE080. Landing on one that is <b>already taken</b> is not a bounce and not a warning: 0x528F reads the bit and, if it was set, jumps straight to the death routine.</p>
 <p>Filling all five ends the stage. Whatever is left on the clock is cashed in at <b>ten points a unit</b>, one every two frames.</p>
 <h2 id="the-clock">The clock</h2>
-<p>The time starts at 150 (0x96 in BCD) and drops by one every 20 frames. Running out kills the frog.</p>
+<p>The time starts at 0x96 and drops by one every 20 frames. The whole count is BCD —0x5104 subtracts with <code>add a,099h / daa</code>, and the thresholds are compared as <code>cp 060h</code> and <code>cp 032h</code>— so that 0x96 is <b>ninety-six</b> units, not 150: at 20 frames each, 32 seconds on a 60 Hz machine. Running out kills the frog.</p>
 <p>Two things happen along the way that are easy to miss: at <b>0x60</b> four objects in row 15 speed up, once per stage; and at <b>0x32</b> the character the time bar is drawn with changes colour.</p>
 <h2 id="lives-and-extra-lives">Lives and extra lives</h2>
 <p>Three lives. The extra life threshold lives in 0xE005 and is compared against the <b>high byte</b> of the score, which counts tens of thousands: it starts at 1 and goes up by 5, so the first extra life comes at <b>10,000</b> and the rest every <b>50,000</b>.</p>
