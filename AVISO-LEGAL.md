@@ -14,7 +14,7 @@ licencia de `LICENSE`.
 
 ## Qué hay en este repositorio
 
-El fichero `src/timepilot.asm` es el desensamblado comentado del cartucho. Se
+El fichero `src/frogger.asm` es el desensamblado comentado del cartucho. Se
 publica para la **preservación, el estudio y la documentación** de un título que es parte de la historia del software del MSX.
 
 La imagen del cartucho (`.rom`) **no** se distribuye aquí. Quien quiera volver
