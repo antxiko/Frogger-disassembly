@@ -1151,3 +1151,145 @@ C 0x582C 0xA0 es el puerto donde se dice que registro del PSG se va a tocar
 C 0x582E el outi saca el numero de registro y deja HL en el valor
 C 0x5830 0xA1 es el puerto del dato
 C 0x5836 BC vuelve como estaba: 0x581C lo guardo porque el outi se come B
+
+C 0x4012 los cuatro pares de registros se guardan: se entra desde la interrupcion
+C 0x403A el joystick da las lineas a cero: se invierten
+C 0x403B los cuatro bits bajos: las cuatro direcciones
+C 0x4047 el 0xEF apaga el bit 4, que es el primer boton
+C 0x4054 y el 0xDF el bit 5, que es el segundo
+C 0x4064 y se apunta que ya se ha leido
+C 0x4085 el bit 1 apagado: el salto se da por terminado
+
+C 0x40AA la espera se limpia antes de entrar en la muerte
+C 0x40DF el reparto vuelve a cero: se juega entero otra vez
+C 0x4109 y si no, la espera baja un punto
+C 0x4118 el 0xA1 es el puerto de datos del PSG
+C 0x411C los siete bits bajos son lo que queda de nota
+
+C 0x412A la cuenta de la nota baja un punto
+C 0x4150 los tres bits bajos son el resto del periodo
+C 0x4163 el 0x1F es el periodo del ruido
+C 0x416B cuatro rotaciones para bajar el nibble alto
+C 0x4183 la duracion, mas tres, es lo que tarda en apagarse
+C 0x4194 y el canal queda callado
+
+C 0x41A2 el `rrca` pasa de numero de canal a registro de volumen
+C 0x41C9 el truco de siempre: se siembra el primer byte y el LDIR lo arrastra
+C 0x41DD el nibble alto a unos: no se pulsa ninguna fila del teclado
+C 0x41DF modo 1: la interrupcion salta al 0x38
+C 0x41FD y el registro siguiente
+C 0x4203 0x300 bytes: las tres tablas de trabajo de 0xE0A0
+C 0x420F B a cero son 256 bytes
+C 0x421A ocho registros
+
+C 0x4251 dos tandas de la lista de colores
+C 0x42C3 cuatro bits: las teclas 1 a 4
+C 0x42CF ocho puntos de espera con el titulo puesto
+C 0x42D6 0xE014 a uno: la demo en marcha
+
+C 0x42E0 los tres canales, callados
+C 0x431C con un jugador, 0xE000 a cero
+C 0x4321 y con dos, a uno
+C 0x4325 la cuenta de fotogramas vuelve a cero
+C 0x4360 un solo bloque con cabecera
+C 0x437B dos juegos mas
+
+C 0x438C dos juegos mas
+C 0x43AC nueve tandas de color
+C 0x43BA seis tandas mas, esta vez del reves
+C 0x4415 seis cifras: tres bytes en BCD
+C 0x4426 el bit 0 puesto: solo suena la musica
+C 0x4443 y el reparto vuelve a la normalidad
+
+C 0x4464 0xE015 a uno: hay partida en marcha
+C 0x4471 dos casillas: el rotulo de 2UP
+C 0x447B seis casillas mas: su marcador
+C 0x4487 siete casillas: el hueco entero de las vidas
+C 0x449E el caracter 9 es la rana del lateral
+C 0x44B1 tres bytes: las seis cifras
+C 0x44BE tres bytes: los puntos pasan a ser el record
+
+C 0x451C cuatro bits: las teclas 1 a 4
+C 0x4538 dos casillas: el rotulo entero
+C 0x454E 0xE004 y 0xE015 a cero: se acabo la vida
+C 0x4581 cuatro puntos de espera con el aviso puesto
+
+C 0x45C3 y el reparto vuelve a la normalidad
+C 0x45D1 seis bytes: los dos marcadores
+C 0x45F5 registro 14 del PSG: el puerto del joystick
+C 0x45F9 el `nop` es la espera que pide el PSG antes de leer
+C 0x460B el teclado da las teclas a cero: se invierten
+C 0x460D cuatro rotaciones: los cursores estan en el nibble alto
+C 0x4622 cinco listas de rotulos
+
+C 0x4654 tres bytes: seis cifras
+C 0x465C cuatro rotaciones para bajar el nibble alto
+C 0x466A tres bytes, dos cifras cada uno
+C 0x467D y con carry, el que entra puede jugar
+C 0x4682 mientras no llegue a cero, no toca
+C 0x46A9 dos casillas: el rotulo entero
+
+C 0x46D7 B a cero son 256 casillas
+C 0x46E2 24 filas
+C 0x4716 dentro de los cuatro margenes: chocan
+C 0x4718 y si no, carry a cero
+
+C 0x474C tantos juegos como diga B
+C 0x4770 dos bits por pasada
+C 0x477E ocho caracteres por juego
+C 0x47A1 ocho bytes: un caracter
+C 0x47BB ocho bytes borrados
+C 0x47C5 0xA0 bytes: el andamio entero
+
+C 0x47D2 ocho bytes: un caracter
+C 0x47E6 tantas copias como diga la cuenta
+C 0x47F7 ocho bytes, de atras adelante
+C 0x47FB tantas copias invertidas como diga la cuenta
+C 0x47FF y el grupo siguiente
+C 0x480B tantas parejas como diga B
+
+C 0x4855 tantos tramos como pida el largo del coche
+C 0x4869 cuatro versiones
+C 0x48A5 la rana rescatable, con su propia plantilla
+
+C 0x48F6 tantos caracteres como diga el largo
+C 0x48FC cuatro largos de tronco
+C 0x490A el `scf` avisa a la vuelta siguiente de que ya no es la primera
+C 0x4916 cuatro versiones
+
+C 0x4E3B bit 0 arriba, bit 1 abajo, bit 2 izquierda y bit 3 derecha
+C 0x4E4A y si no se pulso nada, el aviso se retira
+C 0x4E58 dibujo 4: la rana mirando arriba
+C 0x4E5B y el sprite de atras, el 8
+C 0x4E91 dibujo 0x1C: la rana mirando a la izquierda
+
+C 0x4EB2 0xE043 a 0x80: solo suena, no se mueve nada
+C 0x4EC9 ocho fotogramas dura el salto
+C 0x4EDE la Y 0xCF deja el segundo sprite fuera de la pantalla
+C 0x4EE1 ocho bytes: los dos sprites
+C 0x4F2A cuatro bytes: el atributo entero
+
+C 0x4F5B cuatro bytes: el atributo entero
+C 0x4F78 y el dibujo baja cuatro: vuelve al de antes
+C 0x4F98 32 pasos de ciclo
+C 0x4FA9 el bit 0 avisa de que la boca se va a abrir
+
+C 0x4FEC la Y 0xCF esconde el sprite
+C 0x5012 0x10 bytes: los cuatro sprites del cocodrilo
+C 0x5020 cuatro bytes: solo la cabeza
+C 0x502B tres trozos mas
+C 0x5039 cuatro bytes por trozo
+C 0x5050 tres trozos
+C 0x505F dieciseis pixeles de un trozo al siguiente
+
+C 0x50CA cuatro bytes: el atributo entero
+C 0x50E0 restar 0x24, doblar y sumar 0x10: eso pasa los cuartos a pixeles
+C 0x5115 las diecisiete, una a una
+
+C 0x512E cuatro fichas
+C 0x5133 cuatro bytes de una ficha a la siguiente
+C 0x5136 las cuatro, una a una
+C 0x515A 0x20 casillas: la barra entera
+C 0x516B mientras no llegue a cero, no toca
+C 0x5180 seis casillas: la barra entera
+C 0x518C cuatro bytes de una ficha a la siguiente

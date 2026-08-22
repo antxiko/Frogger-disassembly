@@ -18,8 +18,8 @@ byte, y aquí no hay ninguna suposición disfrazada de hecho.
 | datos identificados | 3.312 | 40,43 % |
 | **sin explicar** | **0** | **0,00 %** |
 
-**314 etiquetas** (ninguna sin bautizar), **536 comentarios anclados** —el
-20,9 % de las instrucciones— y **69 rangos de datos**, cada uno con su nombre,
+**314 etiquetas** (ninguna sin bautizar), **656 comentarios anclados** —el
+25,6 % de las instrucciones— y **69 rangos de datos**, cada uno con su nombre,
 su explicación y la anchura de sus filas. **23 comprobaciones** lo vigilan todo.
 
 ## Algo de lo que apareció

@@ -18,7 +18,7 @@ byte for byte, and nothing here is a guess dressed up as a fact.
 | identified data | 3,312 | 40.43 % |
 | **unexplained** | **0** | **0.00 %** |
 
-**314 labels** (not one left unnamed), **536 anchored comments** — 20.9 % of the
+**314 labels** (not one left unnamed), **656 anchored comments** — 25.6 % of the
 instructions — and **69 data ranges**, each with its name, its explanation and
 the width of its rows. **23 tests** watch over all of it.
 
