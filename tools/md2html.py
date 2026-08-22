@@ -73,8 +73,8 @@ def enlinea(t):
 # La web se sirve desde docs/, asi que lo que este fuera de esa carpeta no
 # existe para el navegador: esos enlaces se mandan al repositorio. Se puede
 # cambiar sin tocar el codigo con la variable de entorno.
-REPO = os.environ.get("TIMEPILOT_REPO",
-                      "https://github.com/antxiko/TimePilot-disassembly")
+REPO = os.environ.get("FROGGER_REPO",
+                      "https://github.com/antxiko/Frogger-disassembly")
 
 
 def ruta(href):

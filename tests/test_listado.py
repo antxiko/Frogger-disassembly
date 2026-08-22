@@ -257,6 +257,21 @@ class TestWeb(unittest.TestCase):
                 self.assertNotIn(juego, texto, "tools/%s nombra %s"
                                  % (fn, juego))
 
+    def test_los_enlaces_al_repositorio_son_a_ESTE_repositorio(self):
+        """Time Pilot esta permitido en el texto, pero no en la URL del repo.
+
+        md2html.py se copio del de Time Pilot, y la excepcion de
+        OTROS_JUEGOS -que existe porque los dos cartuchos comparten el
+        reproductor de sonido- dejaba pasar que los enlaces a `src/` y a
+        `tools/` apuntaran al repositorio del OTRO juego.
+        """
+        with open(os.path.join(RAIZ, "tools", "md2html.py"),
+                  encoding="utf-8") as f:
+            texto = f.read()
+        for url in re.findall(r"https://github\.com/antxiko/[\w.-]+", texto):
+            self.assertIn("Frogger", url,
+                          "tools/md2html.py enlaza a %s" % url)
+
     def test_la_portada_publica_las_cifras_del_arbol(self):
         """Las cifras de la web son las del presupuesto, y suman el cartucho."""
         with open(os.path.join(RAIZ, "tools", "make_web.py"),
