@@ -42,24 +42,13 @@ for _en, _es in _PAREJAS:
     PAREJA[_en] = _es
     PAREJA[_es] = _en
 
-# El pie va en el idioma de la pagina, y dice lo que el cartucho firma: el
-# copyright esta escrito con la fuente del propio juego en la pantalla de
-# titulo y en el marcador (listas de 0x4EAB y 0x4FA3). No hay creditos ni
-# iniciales en ninguna parte del binario.
+# El pie va en el idioma de la pagina. Solo dice lo que este proyecto tiene
+# medido: el juego, quien lo publico, el numero de catalogo y el tamano. Lo que
+# el cartucho firme en su pantalla de titulo no se ha comprobado aqui, asi que
+# no se afirma.
 PIE = {
-    "es": "<em>Time Pilot</em> lo publico Konami para MSX; su numero de "
-          "catalogo es RC-703 y el propio cartucho firma <b>&copy;KONAMI "
-          "1983</b>, dos veces y con su propia fuente: bajo el titulo y al pie "
-          "del marcador. No hay creditos ni iniciales en ninguna parte del "
-          "binario. Todos los derechos sobre el juego siguen siendo de sus "
-          "titulares. Este trabajo es de preservacion, estudio y "
-          "documentacion.",
-    "en": "<em>Time Pilot</em> was published by Konami for the MSX; its "
-          "catalogue number is RC-703 and the cartridge itself signs "
-          "<b>&copy;KONAMI 1983</b> twice, in its own font: under the title "
-          "and at the foot of the scoreboard. There are no credits and no "
-          "initials anywhere in the binary. All rights in the game remain with "
-          "their holders. This is preservation, study and documentation work.",
+    "es": "<em>Frogger</em> lo publico Konami para MSX; su numero de catalogo es RC-704 y son 8 KB, la mitad que cualquier otro cartucho de esta serie. Todos los derechos sobre el juego siguen siendo de sus titulares. Este trabajo es de preservacion, estudio y documentacion.",
+    "en": "<em>Frogger</em> was published by Konami for the MSX; its catalogue number is RC-704 and it is 8 KB, half of any other cartridge in this series. All rights in the game remain with their holders. This is preservation, study and documentation work.",
 }
 
 
