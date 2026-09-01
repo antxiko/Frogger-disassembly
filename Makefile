@@ -92,7 +92,8 @@ clean:
 imagenes: $(ROM)
 	@mkdir -p docs/imagenes work/gfx
 	python3 tools/graficos.py $(ROM) work/gfx
-	@cp work/gfx/titulo.png work/gfx/partida.png work/gfx/sprites.png docs/imagenes/
+	@cp work/gfx/titulo.png work/gfx/rotulo.png docs/imagenes/
+	@cp work/gfx/partida.png work/gfx/sprites.png docs/imagenes/
 	@cp work/gfx/caracteres.png work/gfx/coches.png docs/imagenes/
 	@cp work/gfx/trazado1.png work/gfx/trazado2.png docs/imagenes/
 	@cp work/gfx/trazado4.png work/gfx/trazado5.png docs/imagenes/

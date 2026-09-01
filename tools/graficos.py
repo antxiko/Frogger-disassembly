@@ -446,6 +446,46 @@ def pinta_pantalla(v, filas=24, cols=32, esc=2):
     return w, h, px
 
 
+def pinta_trozo(v, f0, f1, c0, c1, esc=4):
+    """Las casillas [f0,f1]x[c0,c1] de la tabla de nombres, leidas igual."""
+    w, h = (c1 - c0 + 1) * 8 * esc, (f1 - f0 + 1) * 8 * esc
+    px = [[FONDO] * w for _ in range(h)]
+    for f in range(f0, f1 + 1):
+        tercio = (f // 8) * 0x800
+        for c in range(c0, c1 + 1):
+            n = v[0x3800 + f * 32 + c]
+            for y in range(8):
+                pat = v[0x2000 + tercio + n * 8 + y]
+                col = v[0x0000 + tercio + n * 8 + y]
+                tinta = PAL[col >> 4] if (col >> 4) else FONDO
+                fdo = PAL[col & 15] if (col & 15) else FONDO
+                for x in range(8):
+                    color = tinta if pat & (0x80 >> x) else fdo
+                    for dy in range(esc):
+                        for dx in range(esc):
+                            px[((f - f0) * 8 + y) * esc + dy][
+                                ((c - c0) * 8 + x) * esc + dx] = color
+    return w, h, px
+
+
+def marco_del_rotulo(rom):
+    """Las esquinas del rotulo FROGGER, sin recortar nada a ojo.
+
+    La primera de las cinco listas (0x4A04) escribe tres cosas: el rotulo, la
+    linea del copyright y el PLAY SELECT. El rotulo es el unico que se dibuja
+    con los caracteres de abajo -0x20 a 0x33, veinte seguidos que no salen en
+    ningun otro sitio de la pantalla-; lo demas va con las letras que INIT sube
+    dos veces a 0x98 y 0xB7. Asi que el marco de los caracteres por debajo de
+    0x40 ES el del rotulo.
+    """
+    v = bytearray(0x4000)
+    pinta_rotulos(rom, 0x4A04, v)
+    o = [(f, c) for f in range(24) for c in range(32)
+         if 0 < v[0x3800 + f * 32 + c] < 0x40]
+    return (min(f for f, _ in o), max(f for f, _ in o),
+            min(c for _, c in o), max(c for _, c in o))
+
+
 def pinta_sprites(v, prim, n, fn, cols=8, esc=4, color=(255, 255, 255)):
     """N dibujos de sprite de 16x16 seguidos, en un solo color (el MSX no da mas)."""
     filas = (n + cols - 1) // cols
@@ -494,6 +534,8 @@ def main():
 
     v = vram_del_titulo(rom)
     png(*pinta_pantalla(v), os.path.join(sal, "titulo.png"))
+    png(*pinta_trozo(v, *marco_del_rotulo(rom)),
+        os.path.join(sal, "rotulo.png"))
 
     p = vram_de_la_partida(rom)
     png(*pinta_pantalla(p), os.path.join(sal, "partida.png"))

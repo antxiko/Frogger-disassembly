@@ -378,7 +378,10 @@ def main(argv):
     imgdir, salida, idioma = argv[1:4]
     t = TXT[idioma]
 
-    ruta_logo = os.path.join(imgdir, "logo.png")
+    # El rotulo de la cabecera es el del propio cartucho: los caracteres 0x20 a
+    # 0x33 puestos por la primera de las cinco listas de 0x4A04, dibujados desde
+    # la ROM por graficos.py. Si el PNG no esta, se cae al texto.
+    ruta_logo = os.path.join(imgdir, "rotulo.png")
     cabecera = (f'<img src="{img64(ruta_logo)}" alt="Frogger">'
                 if os.path.exists(ruta_logo) else "<h1>Frogger</h1>")
 
