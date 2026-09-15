@@ -27,6 +27,10 @@ L_41B4) caen una por una en las diez que ya tenían nombre en Time Pilot al
 restarles 0x4F. No sobra ninguna por ninguno de los dos lados. Y en los dos
 cartuchos el reproductor está colocado justo antes de INIT.
 
+## No lleva la marca oculta de Konami
+
+Muchos cartuchos de la casa esconden al final de la ROM su número de catálogo y el título en katakana; lo descubrió **Manuel Pazos** ([@ManuelPazosMSX](https://twitter.com/ManuelPazosMSX)). Este no: detrás del último byte con contenido solo quedan los 16 bytes de relleno 0xFF con los que acaba el cartucho. Y no es que esté en otro sitio: se rastrearon las 8.192 posiciones con un buscador que sí la encuentra en los cartuchos de la serie que la llevan.
+
 ## La demo entera son quince bytes
 
     584F  00 08 01 01 01 01 01 08 01 01 01 01 08 00 01

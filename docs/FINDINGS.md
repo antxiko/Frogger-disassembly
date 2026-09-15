@@ -27,6 +27,10 @@ one by one on the ten already named in Time Pilot once you subtract 0x4F. None
 left over on either side. In both cartridges the player sits immediately
 before INIT.
 
+## It does not carry Konami's hidden mark
+
+Many of the house's cartridges hide their catalogue number and the title in katakana at the end of the ROM; **Manuel Pazos** ([@ManuelPazosMSX](https://twitter.com/ManuelPazosMSX)) found it. This one does not: behind the last byte with any content there are only the 16 bytes of 0xFF padding the cartridge ends with. Nor is it somewhere else: all 8,192 positions were swept with a search that does find it in the cartridges of the series that carry it.
+
 ## The whole demo is fifteen bytes
 
     584F  00 08 01 01 01 01 01 08 01 01 01 01 08 00 01
