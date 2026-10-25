@@ -73,3 +73,23 @@ Ningún generador de números. La rana la mueve una lista de **quince bytes** en
 0x584F, uno por movimiento y con el mismo formato que los mandos. El puntero de
 0xE049 vuelve al principio al montar cada fase, y solo se le incrementa el byte
 bajo, así que la lista no puede cruzar de página.
+
+## Código compartido con otros cartuchos de Konami
+
+Este desensamblado se ha comparado, instrucción por instrucción, con
+todos los demás de Konami de la serie. Cuenta un bloque cuando las
+mismas instrucciones, al menos seis desde una etiqueta hasta su `ret`
+o su salto sin condición, están en los dos cartuchos; las direcciones
+no se miran, porque cambian de un cartucho a otro. De los otros 57,
+**6** tienen al menos un bloque en común con este; estos son los
+que más comparten:
+
+| Cartucho | Bloques | Instrucciones | Por ejemplo (aquí = allí) |
+|---|---:|---:|---|
+| [Time Pilot](https://antxiko.github.io/TimePilot-disassembly/es/) | 16 | 236 | `CANAL_PON_VOLUMEN` (0x4167) |
+| [Hyper Olympic 1](https://antxiko.github.io/HyperOlympic1-disassembly/es/) | 4 | 35 | `PARPADEA_LA_ELECCION` (0x4328) = `TITULO_PARPADEA` |
+| [Hyper Olympic 2](https://antxiko.github.io/HyperOlympic2-disassembly/es/) | 4 | 35 | `PARPADEA_LA_ELECCION` (0x4328) = `TITULO_PARPADEA` |
+
+La matriz entera, los 58 cartuchos entre sí, está en
+[Las rutinas](https://antxiko.github.io/MSX-disassembly-database/es/LAS-RUTINAS.html) de la base de datos de la
+serie, con el método y el programa que la mide.

@@ -76,3 +76,23 @@ No random generator. The frog is driven by a list of **fifteen bytes** at
 0x584F, one per move, in the same format as the controls. The pointer at 0xE049
 is reset to the start whenever a stage is built, and only its low byte is
 incremented — so the list cannot cross a page boundary.
+
+## Code shared with other Konami cartridges
+
+This disassembly has been compared, instruction by instruction, with
+every other Konami one in the series. A block counts when the same
+instructions, at least six of them from a label to its `ret` or its
+unconditional jump, are in both cartridges; the addresses are left
+aside, because they change from one cartridge to the next. Of the
+other 57, **6** have at least one block in common with this one;
+these are the ones that share the most:
+
+| Cartridge | Blocks | Instructions | For example (here = there) |
+|---|---:|---:|---|
+| [Time Pilot](https://antxiko.github.io/TimePilot-disassembly/) | 16 | 236 | `CANAL_PON_VOLUMEN` (0x4167) |
+| [Hyper Olympic 1](https://antxiko.github.io/HyperOlympic1-disassembly/) | 4 | 35 | `PARPADEA_LA_ELECCION` (0x4328) = `TITULO_PARPADEA` |
+| [Hyper Olympic 2](https://antxiko.github.io/HyperOlympic2-disassembly/) | 4 | 35 | `PARPADEA_LA_ELECCION` (0x4328) = `TITULO_PARPADEA` |
+
+The whole matrix, the 58 cartridges against each other, is on
+[The routines](https://antxiko.github.io/MSX-disassembly-database/THE-ROUTINES.html) in the series database, along
+with the method and the program that measures it.
